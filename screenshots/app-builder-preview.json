@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Nibras QR",
+      "hasCanvas": false,
+      "bodyTextLen": 879,
+      "bodyTextHash": "92ab6533de38d519a4533b3b6b33b9a92bacf12fec1814ae14fcea7924b90f3d",
+      "bodyTextPrefix": "Nibras QR Yarat Skaner Şablonlar QR-lərim Tariflər EN Daxil ol Q",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Nibras QR",
+      "hasCanvas": false,
+      "bodyTextLen": 879,
+      "bodyTextHash": "2e3f363101d01284915e65edd158ae82345bfcd096cf4af7fade594d7cbd46da",
+      "bodyTextPrefix": "Nibras QR EN Daxil ol QR TOOLKİT · DYNAMİC QR · STATİSTİKA Bizne",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

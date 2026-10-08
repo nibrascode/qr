@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="Nibras QR">
+  <rect width="16" height="16" rx="4" fill="#090a0c"/>
+  <g fill="#2dd4bf" shape-rendering="crispEdges">
+    <path fill-rule="evenodd" d="M1 1h5v5H1zm1 1h3v3H2zm1 1h1v1H3zM10 1h5v5h-5zm1 1h3v3h-3zm1 1h1v1h-1zM1 10h5v5H1zm1 1h3v3H2zm1 1h1v1H3z"/>
+    <path d="M10 10h2v2h-2zm4 0h1v1h-1zM10 14h1v1h-1zm2 1h3v1h-3zm3-3h1v3h-1z"/>
+  </g>
+</svg>
