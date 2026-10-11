@@ -123,7 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
       </footer>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg/95 backdrop-blur-md md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden">
         <div className="grid grid-cols-5">
           {links.map((l) => {
             const Icon = l.icon;

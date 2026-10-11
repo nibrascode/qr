@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="az">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090a0c" />
+    <title>QR</title>
+    <link rel="stylesheet" href="shell.css" />
+  </head>
+  <body>
+    <main>
+      <div class="logo" aria-hidden="true">▣</div>
+      <h1>İnternet bağlantısı yoxdur</h1>
+      <p>Bağlantını yoxla və yenidən cəhd et.</p>
+      <p class="sub">No connection. Check your internet and try again.</p>
+      <button type="button" onclick="history.length > 1 ? history.back() : location.reload()">
+        Yenidən cəhd et
+      </button>
+    </main>
+  </body>
+</html>

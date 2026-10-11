@@ -5,6 +5,7 @@ import { downloadBlob, renderQrSvg, svgToPng } from "@/lib/qr/render";
 import type { Plan, QrDesign } from "@/lib/qr/types";
 import { PLAN_LIMITS } from "@/lib/qr/types";
 import { useI18n } from "@/lib/i18n";
+import { isNativeApp, shareFileNative } from "@/lib/native";
 import { Button } from "@/components/ui/button";
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -32,7 +33,7 @@ export function ExportBar({
   const { t } = useI18n();
   const limits = PLAN_LIMITS[plan];
   const branded = limits.branded;
-  const fileBase = (name || "nibras-qr").replace(/[^\w\-]+/g, "-").slice(0, 40);
+  const fileBase = (name || "nibras-qr").replace(/[^\w-]+/g, "-").slice(0, 40);
 
   const svg = () => renderQrSvg(value, design, { branded });
 
@@ -62,7 +63,7 @@ export function ExportBar({
     doc.setTextColor(238, 241, 244);
     doc.setFontSize(11);
     doc.text(name || "Nibras QR", 297.64, y + w + 28, { align: "center" });
-    doc.save(`${fileBase}.pdf`);
+    downloadBlob(doc.output("blob"), `${fileBase}.pdf`);
   };
 
   const copy = async () => {
@@ -78,6 +79,10 @@ export function ExportBar({
 
   const share = async () => {
     const blob = await svgToPng(svg(), 1024);
+    if (isNativeApp()) {
+      await shareFileNative(blob, `${fileBase}.png`, name || "QR");
+      return;
+    }
     const file = new File([blob], `${fileBase}.png`, { type: "image/png" });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: name || "QR" });

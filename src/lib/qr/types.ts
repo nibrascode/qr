@@ -100,7 +100,8 @@ export const PLAN_LIMITS: Record<
   }
 > = {
   free: {
-    dynamic: 0,
+    // A few dynamic codes so the free tier is genuinely useful.
+    dynamic: 3,
     svg: false,
     pdf: false,
     designPro: false,

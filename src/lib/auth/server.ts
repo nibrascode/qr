@@ -127,6 +127,33 @@ const trustedOrigins: string[] = explicitBaseURL
 
 const databaseUrl = env("DATABASE_URL");
 
+// Direct Google sign-in (this app's OWN Google OAuth client, no broker). Only
+// active when both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set server-side;
+// otherwise the broker flow above is used unchanged. Optional
+// GOOGLE_NATIVE_CLIENT_IDS (comma-separated) adds extra ID-token audiences for
+// native mobile sign-in (e.g. an iOS client id). Callback:
+// `${BETTER_AUTH_URL}/api/auth/callback/google`. See docs/google-sign-in.md.
+const googleClientId = env("GOOGLE_CLIENT_ID");
+const googleClientSecret = env("GOOGLE_CLIENT_SECRET");
+const googleNativeClientIds = (env("GOOGLE_NATIVE_CLIENT_IDS") ?? "")
+  .split(",")
+  .map((id) => id.trim())
+  .filter(Boolean);
+/** True when the direct Google provider (`google`) is configured. */
+export const googleDirectConfigured =
+  !authDisabled && Boolean(googleClientId && googleClientSecret);
+const socialProviders = googleDirectConfigured
+  ? {
+      google: {
+        // First id is the primary (web) client used for the redirect flow; the
+        // rest are only accepted as ID-token audiences (native sign-in).
+        clientId: [googleClientId as string, ...googleNativeClientIds],
+        clientSecret: googleClientSecret as string,
+        prompt: "select_account" as const,
+      },
+    }
+  : undefined;
+
 // Static broker OAuth endpoints (skip OIDC discovery on every sign-in / callback).
 // Discovery would cost an extra network hop to the broker before the popup can
 // even redirect to Google/X — the live-preview popup felt stuck on the app for
@@ -184,6 +211,8 @@ export const auth = betterAuth({
   // local loopback variants, or clients get "Invalid origin".
   trustedOrigins,
 
+  ...(socialProviders ? { socialProviders } : {}),
+
   // Encrypt broker-issued OAuth tokens at rest, and treat the broker's upstreams
   // as trusted first-party identities. The broker owns identity and X emails are
   // synthetic/unverified, so WITHOUT this a login can fail with
@@ -197,6 +226,9 @@ export const auth = betterAuth({
       trustedProviders: [
         ...GROK_PROVIDERS.map((p) => p.providerId),
         GATE_PROVIDER_ID,
+        // Google verifies emails, so a direct-Google login may link to an
+        // existing user with the same email (e.g. one created via the broker).
+        ...(googleDirectConfigured ? ["google"] : []),
       ],
       // X's synthetic email is never "verified", so don't gate linking on the
       // local user's email-verified state.

@@ -1,18 +1,49 @@
 name: Android APK Yarat
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Deployed web app the native shell loads (Settings → Secrets and variables
+      # → Actions → Variables → CAP_SERVER_URL, e.g. https://qr.example.com).
+      # Empty → the APK opens a "server URL not configured" page.
+      CAP_SERVER_URL: ${{ vars.CAP_SERVER_URL }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: '18' }
-      - run: npm install && npm run build
-      - run: npm install @capacitor/core @capacitor/android && npm install -D @capacitor/cli && npx cap init "QR" "com.nibras.qr" --web-dir dist && npx cap add android && npx cap sync
+        with:
+          node-version: '22'
+          cache: npm
+
       - uses: actions/setup-java@v4
-        with: { distribution: 'zulu', java-version: '17' }
-      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # The android/ project is committed; sync copies mobile/www, writes
+      # capacitor.config.json (with CAP_SERVER_URL) and links native plugins.
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
           name: QR-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
