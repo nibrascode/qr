@@ -15,7 +15,7 @@ const config: CapacitorConfig = {
   appName: "QR",
   webDir: "mobile/dist",
   // Matches the app's dark theme so no white flash shows behind the WebView.
-  backgroundColor: "#090a0c",
+  backgroundColor: "#000000",
   server: {
     // Local origin https://localhost (secure context: clipboard, camera, etc.).
     androidScheme: "https",
