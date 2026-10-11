@@ -5,6 +5,7 @@ import {
   currentSession,
   signInWithGoogle,
   signOut as backendSignOut,
+  deleteAccount as backendDeleteAccount,
   supabase,
   toMobileUser,
   verifyEntitlement,
@@ -36,6 +37,8 @@ type SessionState = {
   init: () => Promise<void>;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Deletes the account on the server, then signs out locally. */
+  deleteAccount: () => Promise<void>;
   setStorePro: (p: ProInfo) => void;
   refreshServerPro: () => Promise<void>;
   sync: () => Promise<void>;
@@ -136,6 +139,16 @@ export const useSession = create<SessionState>((set, get) => ({
     } finally {
       set({ busy: false });
     }
+  },
+
+  deleteAccount: async () => {
+    set({ busy: true });
+    try {
+      await backendDeleteAccount();
+    } finally {
+      set({ busy: false });
+    }
+    await get().signOut();
   },
 }));
 

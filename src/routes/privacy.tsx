@@ -9,7 +9,7 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   const { lang, t } = useI18n();
-  const policy = PRIVACY[lang];
+  const policy = PRIVACY[lang === "en" ? "az" : lang];
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">

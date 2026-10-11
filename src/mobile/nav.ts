@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { haptic } from "./haptics";
 
 export type Tab = "home" | "create" | "scan" | "library" | "account";
-export type Sub = "templates" | "barcode" | "batch" | "dynamic" | null;
+export type Sub = "templates" | "barcode" | "batch" | "dynamic" | "privacy" | null;
 
 export const useNav = create<{
   tab: Tab;

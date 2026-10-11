@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { NIBRAS_CODE_URL, openUrl } from "../links";
 import { Barcode, ChevronRight, Crown, Layers, QrCode, ScanLine, Shapes, Sparkles } from "lucide-react";
 import { QrPreview } from "@/components/qr/preview";
 import { useGenerator } from "@/lib/qr/store";
@@ -115,6 +116,13 @@ export function HomeScreen() {
           </div>
         </section>
       )}
+      <button
+        type="button"
+        className="block w-full pt-2 text-center text-[11px] text-subtle"
+        onClick={() => void openUrl(NIBRAS_CODE_URL)}
+      >
+        {m.madeBy}
+      </button>
     </div>
   );
 }

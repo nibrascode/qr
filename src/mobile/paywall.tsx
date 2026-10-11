@@ -14,9 +14,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { haptic } from "./haptics";
 import { buy, getPackages, purchasesAvailable, restore, type PurchasesPackage } from "./purchases";
+import { useNav } from "./nav";
 import { useIsPro, useSession } from "./session";
 import { LIMITS } from "./storage";
 import { fmt } from "./strings";
@@ -28,6 +30,7 @@ const ORDER: Record<string, number> = { ANNUAL: 0, MONTHLY: 1, LIFETIME: 2 };
 export function Paywall() {
   const m = useM();
   const { open, hide } = usePaywall();
+  const { t } = useI18n();
   const isPro = useIsPro();
   const { user, setStorePro, refreshServerPro } = useSession();
   const [pkgs, setPkgs] = useState<PurchasesPackage[] | null>(null);
@@ -220,6 +223,16 @@ export function Paywall() {
               </Button>
             </div>
             <p className="text-center text-[11px] text-subtle">{m.legal}</p>
+            <button
+              type="button"
+              className="block w-full text-center text-[11px] text-subtle underline"
+              onClick={() => {
+                hide();
+                useNav.getState().open("privacy");
+              }}
+            >
+              {t.legal.privacy}
+            </button>
           </div>
         )}
 

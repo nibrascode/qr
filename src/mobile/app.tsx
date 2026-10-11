@@ -14,6 +14,7 @@ import { BatchScreen } from "./screens/batch";
 import { CreateScreen } from "./screens/create";
 import { DynamicScreen } from "./screens/dynamic";
 import { HomeScreen } from "./screens/home";
+import { PrivacyScreen } from "./screens/privacy";
 import { SavedScreen } from "./screens/saved";
 import { ScanScreen } from "./screens/scan";
 import { TemplatesScreen } from "./screens/templates";
@@ -79,6 +80,7 @@ function Shell() {
         {sub === "barcode" && <BarcodeScreen />}
         {sub === "batch" && <BatchScreen />}
         {sub === "dynamic" && <DynamicScreen />}
+        {sub === "privacy" && <PrivacyScreen />}
         {!sub && tab === "home" && <HomeScreen />}
         {!sub && tab === "create" && <CreateScreen />}
         {!sub && tab === "scan" && <ScanScreen registerBack={registerBack} />}
@@ -119,7 +121,7 @@ function Shell() {
 
 export function MobileApp() {
   return (
-    <I18nProvider>
+    <I18nProvider defaultLang="en">
       <Shell />
     </I18nProvider>
   );

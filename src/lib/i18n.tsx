@@ -8,9 +8,10 @@ import {
   type ReactNode,
 } from "react";
 
-export type Lang = "az" | "ar" | "ru" | "tr";
+export type Lang = "en" | "az" | "ar" | "ru" | "tr";
 
 export const LANGS: { id: Lang; label: string; native: string }[] = [
+  { id: "en", label: "EN", native: "English" },
   { id: "az", label: "AZ", native: "Azərbaycan" },
   { id: "ar", label: "AR", native: "العربية" },
   { id: "ru", label: "RU", native: "Русский" },
@@ -18,6 +19,7 @@ export const LANGS: { id: Lang; label: string; native: string }[] = [
 ];
 
 export const LOCALE: Record<Lang, string> = {
+  en: "en-US",
   az: "az-AZ",
   ar: "ar",
   ru: "ru-RU",
@@ -1014,10 +1016,106 @@ const tr: Dict = {
   },
 };
 
-const dict: Record<Lang, Dict> = { az, ar, ru, tr };
+const en: Dict = {
+  brand: "Nibras QR",
+  tagline: "Print your QR once. Change the link any time.",
+  nav: { create: "Create", scan: "Scanner", templates: "Templates", dashboard: "My QRs", pricing: "Pricing", signIn: "Sign in" },
+  hero: {
+    kicker: "QR Toolkit · Dynamic QR · Analytics",
+    title: "QR for business — print it, change it later.",
+    body: "Restaurant menus, Wi-Fi, WhatsApp and payments. The QR stays the same while you manage its link and design from your dashboard. Scan counts, country and device stats included.",
+    cta: "Create QR",
+    secondary: "Open scanner",
+    point1: "11 QR types",
+    point2: "Dynamic links",
+    point3: "Live analytics",
+  },
+  features: {
+    title: "Not just a generator — a business tool",
+    create: "Create",
+    createBody: "URL, text, phone, email, WhatsApp, Wi-Fi, vCard, location, SMS, event and app link.",
+    dynamic: "Dynamic QR",
+    dynamicBody: "The QR stays the same. Change your menu, campaign or WhatsApp number from the dashboard.",
+    design: "Design",
+    designBody: "Colours, gradient, dot shape, eye style, logo, frame and transparent background.",
+    stats: "Analytics",
+    statsBody: "Scan count, daily/monthly chart, device and country. See which QR works.",
+    scan: "Scanner",
+    scanBody: "Camera or gallery. Copy the result, open the link, keep it in history.",
+    export: "Export",
+    exportBody: "PNG, JPG, SVG and PDF. High quality and no branding on Premium.",
+  },
+  types: { url: "URL", text: "Text", phone: "Phone", email: "Email", whatsapp: "WhatsApp", wifi: "Wi-Fi", vcard: "Contact", location: "Location", sms: "SMS", event: "Event", app: "App link" },
+  fields: {
+    url: "Link", text: "Text", phone: "Phone", email: "Email", subject: "Subject", body: "Message",
+    ssid: "Network name (SSID)", password: "Password", encryption: "Encryption", hidden: "Hidden network",
+    firstName: "First name", lastName: "Last name", org: "Company", title: "Job title", street: "Street",
+    city: "City", country: "Country", lat: "Latitude", lng: "Longitude", query: "Address or place",
+    start: "Start", end: "End", location: "Location", description: "Description", name: "QR name",
+  },
+  create: {
+    title: "Create QR", static: "Static", dynamic: "Dynamic",
+    dynamicHint: "The QR stays the same, the link can change later. Requires Premium.",
+    save: "Save", update: "Update", saved: "Saved",
+    needAuth: "Sign in for dynamic QR", needPremium: "Dynamic QR is a Premium feature",
+    empty: "Fill in the content — the QR updates live",
+  },
+  design: {
+    title: "Design", colors: "Colours", foreground: "Foreground", background: "Background",
+    transparent: "Transparent background", gradient: "Gradient", dots: "Dots", eyes: "Eyes", logo: "Logo",
+    frame: "Frame", scanText: "Text", bgImage: "Background image", premium: "Premium", square: "Square",
+    rounded: "Rounded", dotsStyle: "Dots", classy: "Classy", extra: "Soft", leaf: "Leaf", none: "None",
+    quiet: "Quiet", banner: "Banner", scanme: "Scan me", ticket: "Ticket",
+  },
+  export: { png: "PNG", jpg: "JPG", svg: "SVG", pdf: "PDF", copy: "Copy", copied: "Copied", share: "Share" },
+  scan: {
+    title: "Scanner", camera: "Camera", gallery: "Gallery", start: "Open camera", stop: "Stop", result: "Result",
+    open: "Open", copy: "Copy", empty: "Point at a QR or upload an image", history: "History", clear: "Clear",
+    denied: "Camera permission denied. Scan from the gallery instead.",
+  },
+  dash: {
+    title: "My QRs", empty: "No QRs yet. Create one and manage it here.", scans: "scans", active: "Active",
+    paused: "Paused", edit: "Edit", download: "Download", duplicate: "Duplicate", pause: "Pause", resume: "Activate",
+    delete: "Delete", folder: "Folder", all: "All", newFolder: "New folder", stats: "Analytics", created: "Created",
+    type: "Type", dynamic: "Dynamic", static: "Static",
+  },
+  stats: {
+    total: "Total scans", week: "7 days", month: "30 days", devices: "Devices", countries: "Countries",
+    series: "Daily scans", empty: "No scans yet. Print the QR and track it.", dest: "Current link", saveDest: "Update link",
+  },
+  pricing: {
+    title: "A price that works for everyone. About a cup of tea a month.",
+    free: "Free", premium: "Premium", business: "Business", month: "/ mo", year: "/ yr", once: "one-time",
+    periodMonthly: "Monthly", periodYearly: "Yearly", periodLifetime: "Lifetime", save: "Save {n}%",
+    perMonth: "just {price} a month", lifetimeNote: "Pay once, use forever",
+    ctaFree: "Start free", ctaPremium: "Go Premium", ctaBusiness: "Go Business", current: "Current plan",
+    note: "Payments are coming in the next stage. For now, activate a plan and try every tool.",
+    f1: "Unlimited static QR", f2: "Scanner", f3: "PNG export", f4: "Basic colours", f5: "3 dynamic QRs",
+    p1: "Dynamic QR", p2: "Logo and custom design", p3: "SVG / PDF / high quality", p4: "Analytics", p5: "Folders",
+    p6: "Unbranded export", p7: "Business templates",
+    b1: "500 dynamic QRs", b2: "API key", b3: "Ready for teams", b4: "Advanced analytics", b5: "White-label roadmap",
+  },
+  templates: {
+    title: "Ready templates", body: "Don't design from scratch. Pick a template, fill in your details, print.",
+    use: "Use", wifi: "Wi-Fi", restaurant: "Restaurant", business: "Business card", social: "Social media",
+    contact: "Contact", event: "Event", payment: "Payment", whatsapp: "WhatsApp",
+  },
+  login: {
+    title: "Sign in to Nibras QR", body: "Keep your QRs, dynamic links and analytics in one dashboard.",
+    google: "Continue with Google", error: "Sign-in failed. Please try again.",
+  },
+  public: {
+    missing: "This QR was not found", inactive: "This QR is temporarily paused", open: "Open link",
+    wifi: "Wi-Fi network", connect: "Copy password", contact: "Save contact",
+  },
+  common: { loading: "Loading", cancel: "Cancel", confirm: "Confirm", search: "Search", upgrade: "Go Premium", locked: "Premium" },
+  legal: { privacy: "Privacy policy", version: "Version" },
+};
+
+const dict: Record<Lang, Dict> = { en, az, ar, ru, tr };
 
 function isLang(v: string | null): v is Lang {
-  return v === "az" || v === "ar" || v === "ru" || v === "tr";
+  return v === "en" || v === "az" || v === "ar" || v === "ru" || v === "tr";
 }
 
 const I18nContext = createContext<{
@@ -1026,8 +1124,12 @@ const I18nContext = createContext<{
   t: Dict;
 } | null>(null);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("az");
+/**
+ * `defaultLang` applies only when the user never picked a language (nothing
+ * saved yet). The website keeps AZ; the mobile app passes "en".
+ */
+export function I18nProvider({ children, defaultLang = "az" }: { children: ReactNode; defaultLang?: Lang }) {
+  const [lang, setLangState] = useState<Lang>(defaultLang);
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem("nibras-lang");

@@ -99,6 +99,13 @@ export async function signOut(): Promise<void> {
 }
 
 /** Ask the server (RevenueCat REST v2) whether the signed-in user is Pro. */
+/** Deletes the signed-in user's server data and auth user (edge function). */
+export async function deleteAccount(): Promise<void> {
+  const { data, error } = await supabase().functions.invoke("delete-account", { method: "POST" });
+  if (error) throw new Error(error.message || "delete failed");
+  if (!(data as { deleted?: boolean } | null)?.deleted) throw new Error("delete failed");
+}
+
 export async function verifyEntitlement(): Promise<{ pro: boolean; expiresAt: string | null } | null> {
   try {
     const { data, error } = await supabase().functions.invoke("verify-entitlement", { method: "POST" });

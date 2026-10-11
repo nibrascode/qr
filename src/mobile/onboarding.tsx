@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LANGS, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { haptic } from "./haptics";
+import { NIBRAS_CODE_URL, openUrl } from "./links";
 import { usePrefs } from "./prefs";
 import { useM } from "./use-m";
 
@@ -24,7 +25,7 @@ export function Onboarding() {
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-bg px-6 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
       <div className="flex items-center justify-between">
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {LANGS.map((l) => (
             <button
               key={l.id}
@@ -69,6 +70,13 @@ export function Onboarding() {
       >
         {last ? m.start : m.next}
       </Button>
+      <button
+        type="button"
+        className="mt-3 text-center text-[11px] text-subtle"
+        onClick={() => void openUrl(NIBRAS_CODE_URL)}
+      >
+        {m.madeBy}
+      </button>
     </div>
   );
 }

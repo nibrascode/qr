@@ -11,7 +11,8 @@ export type Policy = {
 
 const CONTACT = "info@nibrascode.com";
 
-export const PRIVACY: Record<Lang, Policy> = {
+/** Website policy. English falls back to the AZ text (the app ships its own EN policy). */
+export const PRIVACY: Record<Exclude<Lang, "en">, Policy> = {
   az: {
     title: "Məxfilik siyasəti",
     updated: "Yenilənib: 8 oktyabr 2026",

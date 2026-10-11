@@ -76,3 +76,18 @@ The entitlement, products and `default` offering currently point only at the
 - Setup → **License testing**: add the same accounts (test purchases, fast renewals).
 - Testers must install from the Play testing link (sideloaded debug APKs can show
   products only if the package/signature matches and the account is a license tester).
+
+## delete-account (edge function)
+
+`POST /functions/v1/delete-account` with the user's Supabase JWT (verify_jwt on).
+Service role deletes `dynamic_links` (+ `link_scans` cascade), `qr_codes`,
+`entitlements`, the user's `revenuecat_events`, then `auth.admin.deleteUser`.
+The app (Account › Delete account) calls it after a confirmation step and signs
+out. Local on-device codes stay. Public instructions:
+https://www.nibrascode.com/privacy/nibras-qr/delete-account
+
+## Language
+
+The mobile app defaults to English on first launch (`I18nProvider defaultLang="en"`);
+AZ/AR/RU/TR stay selectable and the choice is remembered (localStorage key
+`nibras-lang`). The website keeps AZ as default.

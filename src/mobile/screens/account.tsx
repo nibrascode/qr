@@ -1,4 +1,5 @@
-import { ChevronRight, Crown, LogOut, Moon, RefreshCcw, Sun } from "lucide-react";
+import { useState } from "react";
+import { ChevronRight, Crown, ExternalLink, LogOut, Moon, RefreshCcw, ShieldCheck, Sun, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,8 @@ import { LANGS, LOCALE, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { backendConfigured } from "../config";
 import { haptic } from "../haptics";
+import { NIBRAS_CODE_URL, openUrl } from "../links";
+import { useNav } from "../nav";
 import { usePrefs } from "../prefs";
 import { purchasesAvailable, restore } from "../purchases";
 import { useIsPro, useSession } from "../session";
@@ -27,7 +30,9 @@ function GoogleMark() {
 export function AccountScreen() {
   const { t, lang, setLang } = useI18n();
   const m = useM();
-  const { user, busy, signIn, signOut, storePro, setStorePro } = useSession();
+  const { user, busy, signIn, signOut, deleteAccount, storePro, setStorePro } = useSession();
+  const openSub = useNav((s) => s.open);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const isPro = useIsPro();
   const showPaywall = usePaywall((s) => s.show);
   const { theme, setTheme } = usePrefs();
@@ -50,6 +55,18 @@ export function AccountScreen() {
       toast[res.pro ? "success" : "message"](res.pro ? m.restored : m.nothingToRestore);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const onDelete = async () => {
+    try {
+      await deleteAccount();
+      setConfirmDelete(false);
+      haptic("success");
+      toast.success(m.deleteDone);
+    } catch {
+      haptic("error");
+      toast.error(m.deleteFailed);
     }
   };
 
@@ -93,6 +110,9 @@ export function AccountScreen() {
               <GoogleMark />
               {t.login.google}
             </Button>
+            <button type="button" className="block w-full text-center text-[11px] text-subtle underline" onClick={() => openSub("privacy")}>
+              {t.legal.privacy}
+            </button>
           </div>
         )}
       </Card>
@@ -161,7 +181,7 @@ export function AccountScreen() {
         </div>
         <div>
           <p className="mb-2 text-sm font-medium">{m.language}</p>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {LANGS.map((l) => (
               <Button key={l.id} size="sm" variant={lang === l.id ? "default" : "outline"} onClick={() => setLang(l.id)}>
                 {l.label}
@@ -171,9 +191,45 @@ export function AccountScreen() {
         </div>
       </Card>
 
-      <p className="text-center text-xs text-subtle">
-        Nibras QR · {t.legal.version} {MOBILE_VERSION}
-      </p>
+      <Card className="space-y-1">
+        <p className="mb-1 text-sm font-medium">{m.about}</p>
+        <button type="button" className="press flex w-full items-center gap-3 rounded-xl py-2 text-start text-sm" onClick={() => openSub("privacy")}>
+          <ShieldCheck className="size-4 text-primary" />
+          <span className="flex-1">{t.legal.privacy}</span>
+          <ChevronRight className="size-4 text-subtle rtl:rotate-180" />
+        </button>
+        <button type="button" className="press flex w-full items-center gap-3 rounded-xl py-2 text-start text-sm" onClick={() => void openUrl(NIBRAS_CODE_URL)}>
+          <ExternalLink className="size-4 text-primary" />
+          <span className="flex-1">{m.madeBy}</span>
+          <span className="text-xs text-subtle">nibrascode.com</span>
+        </button>
+        <p className="pt-1 text-xs text-subtle">
+          Nibras QR · {t.legal.version} {MOBILE_VERSION}
+        </p>
+      </Card>
+
+      {user && (
+        <Card className="space-y-3 border border-red-500/30">
+          {!confirmDelete ? (
+            <Button variant="ghost" className="w-full gap-2 text-red-500" disabled={busy} onClick={() => { haptic("warning"); setConfirmDelete(true); }}>
+              <Trash2 className="size-4" /> {m.deleteAccount}
+            </Button>
+          ) : (
+            <>
+              <p className="font-semibold text-red-500">{m.deleteAccount}</p>
+              <p className="text-xs text-muted">{m.deleteBody}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" disabled={busy} onClick={() => setConfirmDelete(false)}>
+                  {t.common.cancel}
+                </Button>
+                <Button className="bg-red-600 text-white hover:bg-red-600/90" disabled={busy} onClick={() => void onDelete()}>
+                  {m.deleteConfirm}
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
