@@ -1,0 +1,24 @@
+@import "../styles.css";
+/* Vite root is mobile/, so point Tailwind at the shared components too. */
+@source "../";
+
+/* Native QR scanner: the camera is drawn BEHIND the WebView. */
+html:has(body.barcode-scanner-active),
+body.barcode-scanner-active,
+body.barcode-scanner-active #root > div {
+  background: transparent !important;
+}
+body.barcode-scanner-active {
+  visibility: hidden;
+}
+body.barcode-scanner-active .barcode-scanner-modal {
+  visibility: visible;
+}
+/* App feel: no tap highlight / overscroll glow, no text-select on chrome. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+nav button {
+  user-select: none;
+}

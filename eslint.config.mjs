@@ -17,6 +17,7 @@ export default tseslint.config(
       "src/routeTree.gen.ts",
       "android/**",
       "ios/**",
+      "mobile/dist/**",
     ],
   },
   js.configs.recommended,

@@ -5,7 +5,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
 import { signInWithGoogle } from "@/lib/google-sign-in";
-import { isNativeApp } from "@/lib/native";
 import { getAuthOptions } from "@/lib/server/auth-options";
 import { useI18n } from "@/lib/i18n";
 import { APP_VERSION } from "@/lib/version";
@@ -48,20 +47,16 @@ function Login() {
   });
   const options = optionsQuery.data;
   // Prefer this app's own Google client when the server has credentials;
-  // otherwise fall back to the Grok broker's Google (web only — Google blocks
-  // OAuth inside the mobile WebView, which needs the direct client).
+  // otherwise fall back to the Grok broker's Google.
   const googleDirect = Boolean(options?.googleDirect);
-  const useBroker = !googleDirect && Boolean(broker) && !isNativeApp();
+  const useBroker = !googleDirect && Boolean(broker);
   const showGoogle = authEnabled && (googleDirect || useBroker);
 
   const onGoogle = async () => {
     setBusy(true);
     try {
       if (googleDirect) {
-        await signInWithGoogle({
-          callbackURL: "/dashboard",
-          webClientId: options?.googleWebClientId ?? null,
-        });
+        await signInWithGoogle({ callbackURL: "/dashboard" });
       } else if (broker) {
         await signIn(broker.providerId, { callbackURL: "/dashboard" });
       }

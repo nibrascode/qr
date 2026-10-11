@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+// Release signing comes ONLY from the environment / Gradle properties, never
+// from files in the repo: ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD,
+// ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD (CI decodes ANDROID_KEYSTORE_BASE64
+// into a temp file). Without them, release builds are produced unsigned.
+def signingValue = { String key ->
+    def v = System.getenv(key) ?: (project.findProperty(key) as String)
+    return v?.trim() ? v.trim() : null
+}
+def releaseKeystore = signingValue('ANDROID_KEYSTORE_FILE')
+def hasReleaseSigning = releaseKeystore && file(releaseKeystore).exists() &&
+        signingValue('ANDROID_KEYSTORE_PASSWORD') && signingValue('ANDROID_KEY_ALIAS')
+
 android {
     namespace = "com.nibras.qr"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +19,10 @@ android {
         applicationId "com.nibras.qr"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI may override versionCode (e.g. with the run number) so every
+        // uploaded bundle is higher than the last one.
+        versionCode((signingValue('ANDROID_VERSION_CODE') ?: '2') as Integer)
+        versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +30,21 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword signingValue('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias signingValue('ANDROID_KEY_ALIAS')
+                keyPassword signingValue('ANDROID_KEY_PASSWORD') ?: signingValue('ANDROID_KEYSTORE_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

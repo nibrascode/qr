@@ -1,64 +1,89 @@
 # Mobile app (Android, Capacitor 8)
 
-## How it works
+## Architecture
 
-Nibras QR is a TanStack Start **SSR** app: `npm run build` produces a Vercel
-bundle in `.vercel/output` (server functions, Better Auth, Postgres, `/r/$code`
-short links). There is no static `dist/` folder, so the old workflow
-(`--web-dir dist`, `cap init` on every run) could not work.
+The Android app is a **real bundled app**, not a website wrapper:
 
-The Android app is a Capacitor shell in **hosted mode**: it loads the deployed
-web app (`CAP_SERVER_URL`). Same origin as the API, so session cookies, server
-functions and sign-in work without CORS/token changes, and every web deploy
-reaches the app without a new APK. Capacitor still injects native plugins into
-that page (camera permission, share sheet, native Google sign-in, later
-RevenueCat).
+- `src/mobile/` — a client-only React app (tabs: Create, Scan, Templates,
+  Saved, Account) that reuses the shared QR code (`src/lib/qr`,
+  `src/components/qr`, `src/lib/i18n`, `src/lib/billing`).
+- `vite.mobile.config.ts` + `mobile/index.html` → `npm run build:mobile` →
+  `mobile/dist` (git-ignored). Capacitor bundles it (`webDir: "mobile/dist"`);
+  there is **no `server.url`**, so the app never loads a remote site.
+- `android/` — committed native project. `npx cap sync android` copies
+  `mobile/dist` and links plugins.
 
-- `capacitor.config.ts` — appId `com.nibras.qr`, appName `QR`, webDir `mobile/www`.
-- `mobile/www/` — bundled pages: `index.html` (shown when `CAP_SERVER_URL` was
-  not set at build time) and `offline.html` (shown when the server can't be reached).
-- `android/` — committed native project (generated once by `cap add android`).
-  `npx cap sync android` regenerates the ignored bits (web assets, plugin list,
-  `capacitor.config.json`).
+### Works offline (no server)
 
-## Native behaviour
+| Feature | How |
+|---|---|
+| Create + live preview, 11 QR types | shared generator/renderer |
+| Designer (colours, dots, eyes, logo, frame) | shared; Premium options locked on Free |
+| Templates | shared templates |
+| Scanner (camera) | `@capacitor-mlkit/barcode-scanning`, bundled ML Kit model (`startScan`) |
+| Scanner (gallery image) | file picker + `jsqr` |
+| Scan history, saved codes | `@capacitor/preferences` on the device |
+| Export PNG/JPG/SVG/PDF, share | `@capacitor/filesystem` + `@capacitor/share` (system share sheet) |
+| Open scanned links | `@capacitor/browser` |
+| Languages AZ/AR/RU/TR, Android back button | shared i18n, `@capacitor/app` |
 
-- **Camera scanner**: `CAMERA` permission + optional camera features in
-  `AndroidManifest.xml`; `getUserMedia` inside the WebView triggers the runtime
-  prompt. Gallery scan uses the system file picker.
-- **Export / share**: WebViews ignore `<a download>`, so PNG/JPG/SVG/PDF exports
-  and the share button go through `@capacitor/filesystem` + `@capacitor/share`
-  (system share sheet → save to Files/Drive/Photos, WhatsApp, …).
-- **Back button**: `@capacitor/app` (history back, exit on first page).
-- **Google sign-in**: Google blocks OAuth in WebViews, so the app uses the
-  native Credential Manager sheet (`@capgo/capacitor-social-login`) and hands the
-  ID token to Better Auth. See `docs/google-sign-in.md`.
+### Needs the backend
+
+Only `src/mobile/api.ts` talks to a server — base URL from
+`VITE_API_BASE_URL` (build time, default `https://qr-rust-one.vercel.app`), so
+the app can point at any deployment of the server, independent of the website UI.
+
+- `GET  /api/mobile/config` — whether Google sign-in is configured + the public Web client id.
+- `POST /api/auth/sign-in/social` `{ provider: "google", idToken }` — native
+  Google ID token → Better Auth session; the session token (`set-auth-token`)
+  is stored in Preferences.
+- `GET  /api/mobile/me` (`Authorization: Bearer …`) — user + plan (cached offline).
+- `POST /api/auth/sign-out`.
+
+Requests use **CapacitorHttp** (native networking): no browser CORS, no
+cookies, so the website's cookie/CSRF/Fetch-Metadata protections are untouched.
+`/api/mobile/me` accepts only bearer tokens and sends no CORS headers.
+
+Later: RevenueCat purchases, dynamic QR / short links and stats, account sync
+(see `docs/revenuecat-plan.md`).
 
 ## Build locally
 
-Requirements: Node 22, JDK 21, Android SDK (platform 36).
+Requirements: Node 22, JDK 21, Android SDK 36.
 
 ```bash
 npm ci
-CAP_SERVER_URL=https://your-deployed-app.example npx cap sync android
-cd android && ./gradlew assembleDebug
-# → android/app/build/outputs/apk/debug/app-debug.apk
+npm run build:mobile                 # VITE_API_BASE_URL=… to change the backend
+npx cap sync android
+cd android
+./gradlew assembleDebug              # → app/build/outputs/apk/debug/app-debug.apk
+# Signed Play bundle (upload key from env, never committed):
+ANDROID_KEYSTORE_FILE=/path/qr-upload.jks ANDROID_KEYSTORE_PASSWORD=… \
+ANDROID_KEY_ALIAS=qr-upload ANDROID_KEY_PASSWORD=… ./gradlew bundleRelease
+# → app/build/outputs/bundle/release/app-release.aab
 ```
 
-`npm run android:apk` does the same (set `CAP_SERVER_URL` first).
+Shortcuts: `npm run android:apk`, `npm run android:aab`, `npm run dev:mobile`
+(browser preview on :8082; the camera scanner falls back to the web scanner).
 
-## CI
+Version: `versionName` 1.1.0 in `android/app/build.gradle` (also
+`src/mobile/version.ts`); `versionCode` defaults to 2 and CI sets it to the run number.
 
-`.github/workflows/build-apk.yml` builds the debug APK on pushes to `main` and on
-manual runs, and uploads it as the `QR-APK` artifact. Set the repository
-variable **`CAP_SERVER_URL`** (Settings → Secrets and variables → Actions →
-Variables).
+## CI (`.github/workflows/build-apk.yml`)
 
-## Before a Play Store release
+On pushes to `main` / manual runs: build `mobile/dist`, sync, build the debug
+APK (artifact `QR-debug-apk`) and, when the signing secrets exist, the signed
+release AAB (artifact `QR-release-aab`).
 
-- Create a release keystore and add a signed `assembleRelease`/`bundleRelease`
-  job (keystore + passwords as GitHub secrets). Register its SHA-1 in Google
-  Cloud (Android OAuth client) for Google sign-in.
-- Bump `versionCode` / `versionName` in `android/app/build.gradle`.
-- App icon / splash: replace `android/app/src/main/res/mipmap-*` (e.g. with
-  `@capacitor/assets`).
+Repository secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -w0 qr-upload.jks`),
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`qr-upload`),
+`ANDROID_KEY_PASSWORD`. Optional variable: `VITE_API_BASE_URL`.
+
+## Play Store
+
+- Enrol in **Play App Signing** and upload the AAB signed with the upload key.
+  Register both the upload key SHA-1 and Play's app-signing SHA-1 in the Google
+  Android OAuth client.
+- Keep the upload keystore + passwords backed up outside the repo — losing it
+  requires an upload-key reset through Play support.
+- App icon / splash: replace `android/app/src/main/res/mipmap-*` (e.g. `@capacitor/assets`).
