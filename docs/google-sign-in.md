@@ -57,3 +57,17 @@ With the provided client id/secret the local server builds the correct request
 So in Google Cloud → Credentials, check that the id in `GOOGLE_CLIENT_ID` is the
 **Web application** client (not the Android one) and add both redirect URIs
 above to it (changes can take a few minutes to apply).
+
+
+## Which client id goes where (important)
+
+There are two Google OAuth clients in the project:
+
+| Client | Used for |
+|---|---|
+| **Web application** ("Web 1", id starts `244636994762-u24i…`) | `serverClientId`/`webClientId` for native sign-in (`VITE_GOOGLE_WEB_CLIENT_ID`, repo variable `GOOGLE_WEB_CLIENT_ID`), the Supabase Google provider client id + secret, and `GOOGLE_CLIENT_ID` on any web server |
+| **Android** (`244636994762-tqr4…`, package `com.nibras.qr` + SHA-1s) | Never entered anywhere in code or config. It only has to exist so Google trusts the signed APK. |
+
+The native ID token's `aud` is the **Web** client id, so Supabase only needs the
+Web id in its Google provider. Using the Android id as `serverClientId` makes
+sign-in fail.

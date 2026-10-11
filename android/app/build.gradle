@@ -27,7 +27,7 @@ android {
         // CI may override versionCode (e.g. with the run number) so every
         // uploaded bundle is higher than the last one.
         versionCode(qrVersionCode)
-        versionName "1.0.0"
+        versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
