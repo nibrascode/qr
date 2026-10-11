@@ -24,6 +24,7 @@ import { Scanner } from "@/components/scan/scanner";
 import { useI18n } from "@/lib/i18n";
 import { shareFileNative } from "@/lib/native";
 import { cn } from "@/lib/utils";
+import { cameraAccess, openAppSettings, requestCamera, type CameraAccess } from "../camera-permission";
 import { haptic } from "../haptics";
 import { classify, urlWarnings, type UrlWarning } from "../scan-intel";
 import { useIsPro, useLimits } from "../session";
@@ -84,6 +85,21 @@ export function ScanScreen({ registerBack }: { registerBack: (fn: (() => boolean
   const batchRef = useRef<string[] | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [history, setHistory] = useState<ScanHit[]>([]);
+  // Camera permission problem to explain inline (null = nothing to show).
+  const [cam, setCam] = useState<CameraAccess | null>(null);
+
+  // Back from Android Settings: re-check so the card disappears once allowed.
+  useEffect(() => {
+    if (!cam || cam === "granted") return;
+    let off: (() => void) | undefined;
+    void import("@capacitor/app").then(async ({ App }) => {
+      const h = await App.addListener("resume", () => {
+        void cameraAccess().then((a) => setCam(a === "granted" ? null : a));
+      });
+      off = () => void h.remove();
+    });
+    return () => off?.();
+  }, [cam]);
   const fileRef = useRef<HTMLInputElement>(null);
   const stopRef = useRef<() => Promise<void>>(async () => {});
 
@@ -112,15 +128,13 @@ export function ScanScreen({ registerBack }: { registerBack: (fn: (() => boolean
 
   const start = async (batchMode = false) => {
     if (batchMode && !isPro) return showPaywall();
-    const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
-    let { camera } = await BarcodeScanner.checkPermissions();
-    if (camera !== "granted") camera = (await BarcodeScanner.requestPermissions()).camera;
-    if (camera !== "granted") {
-      toast.error(m.permission, {
-        action: { label: m.settings, onClick: () => void BarcodeScanner.openSettings() },
-      });
+    const access = await requestCamera();
+    setCam(access);
+    if (access !== "granted") {
+      haptic("error");
       return;
     }
+    const { BarcodeScanner } = await import("@capacitor-mlkit/barcode-scanning");
     setResult(null);
     batchRef.current = batchMode ? [] : null;
     setBatch(batchRef.current);
@@ -149,7 +163,9 @@ export function ScanScreen({ registerBack }: { registerBack: (fn: (() => boolean
       await BarcodeScanner.startScan();
     } catch (err) {
       await stop();
-      toast.error(err instanceof Error ? err.message : t.scan.denied);
+      const access = await cameraAccess();
+      if (access !== "granted") setCam(access);
+      else toast.error(err instanceof Error && err.message ? err.message : t.scan.denied);
     }
   };
 
@@ -184,6 +200,30 @@ export function ScanScreen({ registerBack }: { registerBack: (fn: (() => boolean
             <X /> {batch ? m.finish : m.cancel}
           </Button>
         </div>
+      )}
+
+      {cam && cam !== "granted" && (
+        <Card className="space-y-3 border border-amber-500/40 p-4">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-amber-500/15 text-amber-500">
+              <Camera className="size-5" />
+            </span>
+            <div className="space-y-1">
+              <p className="font-semibold">{m.camTitle}</p>
+              <p className="text-sm text-muted-foreground">{cam === "blocked" ? m.camBlocked : m.camBody}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {cam !== "blocked" && cam !== "unsupported" && (
+              <Button size="sm" onClick={() => void start(false)}>
+                {m.camAllow}
+              </Button>
+            )}
+            <Button size="sm" variant={cam === "blocked" ? "default" : "secondary"} onClick={() => void openAppSettings()}>
+              {m.camOpenSettings}
+            </Button>
+          </div>
+        </Card>
       )}
 
       <div className="grid grid-cols-2 gap-3">
