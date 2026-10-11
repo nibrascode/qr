@@ -5,6 +5,7 @@ import { downloadBlob, renderQrSvg, svgToPng } from "@/lib/qr/render";
 import type { Plan, QrDesign } from "@/lib/qr/types";
 import { PLAN_LIMITS } from "@/lib/qr/types";
 import { useI18n } from "@/lib/i18n";
+import { isNativeApp, shareFileNative } from "@/lib/native";
 import { Button } from "@/components/ui/button";
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -22,22 +23,28 @@ export function ExportBar({
   name,
   plan,
   onLocked,
+  pngSize,
+  printPdf = false,
 }: {
   value: string;
   design: QrDesign;
   name: string;
   plan: Plan;
   onLocked: () => void;
+  /** Override PNG/JPG pixel size (HQ plans only). */
+  pngSize?: number;
+  /** White, print-ready PDF page instead of the dark brand page. */
+  printPdf?: boolean;
 }) {
   const { t } = useI18n();
   const limits = PLAN_LIMITS[plan];
   const branded = limits.branded;
-  const fileBase = (name || "nibras-qr").replace(/[^\w\-]+/g, "-").slice(0, 40);
+  const fileBase = (name || "nibras-qr").replace(/[^\w-]+/g, "-").slice(0, 40);
 
   const svg = () => renderQrSvg(value, design, { branded });
 
   const exportPng = async (jpeg = false) => {
-    const px = limits.hq ? 2048 : 640;
+    const px = limits.hq ? (pngSize ?? 2048) : 640;
     const blob = await svgToPng(svg(), px, jpeg);
     downloadBlob(blob, `${fileBase}.${jpeg ? "jpg" : "png"}`);
   };
@@ -50,19 +57,22 @@ export function ExportBar({
 
   const exportPdf = async () => {
     if (!limits.pdf) return onLocked();
-    const png = await svgToPng(svg(), 1600);
+    const png = await svgToPng(svg(), limits.hq ? Math.max(1600, pngSize ?? 0) : 1600);
     const dataUrl = await blobToDataUrl(png);
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
     const w = 360;
     const x = (595.28 - w) / 2;
     const y = 140;
-    doc.setFillColor(9, 10, 12);
-    doc.rect(0, 0, 595.28, 841.89, "F");
+    if (!printPdf) {
+      doc.setFillColor(9, 10, 12);
+      doc.rect(0, 0, 595.28, 841.89, "F");
+    }
     doc.addImage(dataUrl, "PNG", x, y, w, w);
-    doc.setTextColor(238, 241, 244);
+    if (printPdf) doc.setTextColor(20, 20, 20);
+    else doc.setTextColor(238, 241, 244);
     doc.setFontSize(11);
     doc.text(name || "Nibras QR", 297.64, y + w + 28, { align: "center" });
-    doc.save(`${fileBase}.pdf`);
+    downloadBlob(doc.output("blob"), `${fileBase}.pdf`);
   };
 
   const copy = async () => {
@@ -78,6 +88,10 @@ export function ExportBar({
 
   const share = async () => {
     const blob = await svgToPng(svg(), 1024);
+    if (isNativeApp()) {
+      await shareFileNative(blob, `${fileBase}.png`, name || "QR");
+      return;
+    }
     const file = new File([blob], `${fileBase}.png`, { type: "image/png" });
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], title: name || "QR" });

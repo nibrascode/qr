@@ -1,5 +1,6 @@
 import { encode, QrCodeDataType } from "uqr";
 import type { QrDesign } from "./types";
+import { isNativeApp, shareFileNative } from "@/lib/native";
 
 const FINDER = 7;
 
@@ -282,6 +283,12 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
+  if (isNativeApp()) {
+    void shareFileNative(blob, filename).catch((err: unknown) => {
+      console.error("[export] native share failed", err);
+    });
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

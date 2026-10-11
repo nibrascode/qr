@@ -1,0 +1,97 @@
+apply plugin: 'com.android.application'
+
+// Release signing comes ONLY from the environment / Gradle properties, never
+// from files in the repo: ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD,
+// ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD (CI decodes ANDROID_KEYSTORE_BASE64
+// into a temp file). Without them, release builds are produced unsigned.
+def signingValue = { String key ->
+    def v = System.getenv(key) ?: (project.findProperty(key) as String)
+    return v?.trim() ? v.trim() : null
+}
+def releaseKeystore = signingValue('ANDROID_KEYSTORE_FILE')
+// versionCode: 1 locally (first Play upload); CI passes ANDROID_VERSION_CODE.
+def qrVersionCode = ((signingValue('ANDROID_VERSION_CODE') ?: '1') as String).trim() as Integer
+if (qrVersionCode < 1 || qrVersionCode > 2100000000) {
+    throw new GradleException("ANDROID_VERSION_CODE must be 1..2100000000, got ${qrVersionCode}")
+}
+def hasReleaseSigning = releaseKeystore && file(releaseKeystore).exists() &&
+        signingValue('ANDROID_KEYSTORE_PASSWORD') && signingValue('ANDROID_KEY_ALIAS')
+
+android {
+    namespace = "com.nibras.qr"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.nibras.qr"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // CI may override versionCode (e.g. with the run number) so every
+        // uploaded bundle is higher than the last one.
+        versionCode(qrVersionCode)
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword signingValue('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias signingValue('ANDROID_KEY_ALIAS')
+                keyPassword signingValue('ANDROID_KEY_PASSWORD') ?: signingValue('ANDROID_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    // Optional per-ABI APKs for sharing smaller test builds:
+    //   ./gradlew assembleDebug -PqrAbiSplit=true
+    // (AABs are split by Google Play automatically; this does not affect them.)
+    splits {
+        abi {
+            enable project.hasProperty('qrAbiSplit')
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+            universalApk false
+        }
+    }
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

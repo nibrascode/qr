@@ -20,6 +20,8 @@ import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as DashboardIdRouteImport } from './routes/dashboard.$id'
 import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiMobileConfigRouteImport } from './routes/api/mobile/config'
+import { Route as ApiMobileMeRouteImport } from './routes/api/mobile/me'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -76,6 +78,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMobileConfigRoute = ApiMobileConfigRouteImport.update({
+  id: '/api/mobile/config',
+  path: '/api/mobile/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMobileMeRoute = ApiMobileMeRouteImport.update({
+  id: '/api/mobile/me',
+  path: '/api/mobile/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +101,8 @@ export interface FileRoutesByFullPath {
   '/dashboard/$id': typeof DashboardIdRoute
   '/r/$code': typeof RCodeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/mobile/config': typeof ApiMobileConfigRoute
+  '/api/mobile/me': typeof ApiMobileMeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +116,8 @@ export interface FileRoutesByTo {
   '/dashboard/$id': typeof DashboardIdRoute
   '/r/$code': typeof RCodeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/mobile/config': typeof ApiMobileConfigRoute
+  '/api/mobile/me': typeof ApiMobileMeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +132,8 @@ export interface FileRoutesById {
   '/dashboard/$id': typeof DashboardIdRoute
   '/r/$code': typeof RCodeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/mobile/config': typeof ApiMobileConfigRoute
+  '/api/mobile/me': typeof ApiMobileMeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +149,8 @@ export interface FileRouteTypes {
     | '/dashboard/$id'
     | '/r/$code'
     | '/api/auth/$'
+    | '/api/mobile/config'
+    | '/api/mobile/me'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +164,8 @@ export interface FileRouteTypes {
     | '/dashboard/$id'
     | '/r/$code'
     | '/api/auth/$'
+    | '/api/mobile/config'
+    | '/api/mobile/me'
   id:
     | '__root__'
     | '/'
@@ -157,6 +179,8 @@ export interface FileRouteTypes {
     | '/dashboard/$id'
     | '/r/$code'
     | '/api/auth/$'
+    | '/api/mobile/config'
+    | '/api/mobile/me'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -170,6 +194,8 @@ export interface RootRouteChildren {
   TemplatesRoute: typeof TemplatesRoute
   RCodeRoute: typeof RCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiMobileConfigRoute: typeof ApiMobileConfigRoute
+  ApiMobileMeRoute: typeof ApiMobileMeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -251,6 +277,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mobile/config': {
+      id: '/api/mobile/config'
+      path: '/api/mobile/config'
+      fullPath: '/api/mobile/config'
+      preLoaderRoute: typeof ApiMobileConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mobile/me': {
+      id: '/api/mobile/me'
+      path: '/api/mobile/me'
+      fullPath: '/api/mobile/me'
+      preLoaderRoute: typeof ApiMobileMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -277,6 +317,8 @@ const rootRouteChildren: RootRouteChildren = {
   TemplatesRoute: TemplatesRoute,
   RCodeRoute: RCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiMobileConfigRoute: ApiMobileConfigRoute,
+  ApiMobileMeRoute: ApiMobileMeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

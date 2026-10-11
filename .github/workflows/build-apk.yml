@@ -1,18 +1,81 @@
-name: Android APK Yarat
-on: [push, workflow_dispatch]
+name: Android (APK + AAB)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # PUBLIC build-time config for the bundled app (repo Variables, not secrets):
+      # Supabase backend, Google Web client id (native sign-in serverClientId),
+      # RevenueCat Android public SDK key.
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://rbnhwyvpuobdmgqjdiyj.supabase.co' }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+      VITE_REVENUECAT_ANDROID_API_KEY: ${{ vars.VITE_REVENUECAT_ANDROID_API_KEY }}
+      # Every Play upload needs a higher versionCode. Local builds use 1 (first
+      # Play upload). CI: repo variable ANDROID_VERSION_CODE if set (bump it per
+      # release), else the workflow run number. build.gradle rejects values
+      # outside 1..2100000000 (Play's limit).
+      ANDROID_VERSION_CODE: ${{ vars.ANDROID_VERSION_CODE || github.run_number }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: { node-version: '18' }
-      - run: npm install && npm run build
-      - run: npm install @capacitor/core @capacitor/android && npm install -D @capacitor/cli && npx cap init "QR" "com.nibras.qr" --web-dir dist && npx cap add android && npx cap sync
+        with:
+          node-version: '22'
+          cache: npm
+
       - uses: actions/setup-java@v4
-        with: { distribution: 'zulu', java-version: '17' }
-      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build bundled mobile web app (mobile/dist)
+        run: npm run build:mobile
+
+      - name: Capacitor sync
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
-          name: QR-APK
+          name: QR-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Build signed release AAB
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "::warning::Signing secrets missing (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) - skipping release AAB."
+            exit 0
+          fi
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/upload.jks"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE"
+          ./gradlew bundleRelease --no-daemon
+          rm -f "$ANDROID_KEYSTORE_FILE"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QR-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: warn

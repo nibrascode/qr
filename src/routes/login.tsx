@@ -1,6 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { QrCode } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
+import { signInWithGoogle } from "@/lib/google-sign-in";
+import { getAuthOptions } from "@/lib/server/auth-options";
 import { useI18n } from "@/lib/i18n";
 import { APP_VERSION } from "@/lib/version";
 import { Button } from "@/components/ui/button";
@@ -32,7 +37,35 @@ function GoogleMark() {
 
 function Login() {
   const { t } = useI18n();
-  const google = GROK_PROVIDERS.find((p) => p.idp === "google");
+  const broker = GROK_PROVIDERS.find((p) => p.idp === "google");
+  const [busy, setBusy] = useState(false);
+  const optionsQuery = useQuery({
+    queryKey: ["auth-options"],
+    queryFn: () => getAuthOptions(),
+    enabled: authEnabled,
+    staleTime: Infinity,
+  });
+  const options = optionsQuery.data;
+  // Prefer this app's own Google client when the server has credentials;
+  // otherwise fall back to the Grok broker's Google.
+  const googleDirect = Boolean(options?.googleDirect);
+  const useBroker = !googleDirect && Boolean(broker);
+  const showGoogle = authEnabled && (googleDirect || useBroker);
+
+  const onGoogle = async () => {
+    setBusy(true);
+    try {
+      if (googleDirect) {
+        await signInWithGoogle({ callbackURL: "/dashboard" });
+      } else if (broker) {
+        await signIn(broker.providerId, { callbackURL: "/dashboard" });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t.login.error);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <main className="mx-auto grid min-h-[calc(100dvh-3.5rem)] max-w-5xl items-center gap-10 px-4 py-10 md:grid-cols-2">
@@ -48,12 +81,15 @@ function Login() {
       </div>
       <div className="mx-auto w-full max-w-sm space-y-5">
         <h2 className="font-display text-xl font-semibold">{t.login.title}</h2>
-        {authEnabled && google ? (
+        {optionsQuery.isLoading ? (
+          <div className="h-12 w-full animate-pulse rounded-lg bg-bg-subtle" />
+        ) : showGoogle ? (
           <Button
             type="button"
             variant="outline"
             className="h-12 w-full gap-2.5 text-sm"
-            onClick={() => signIn(google.providerId, { callbackURL: "/dashboard" })}
+            disabled={busy}
+            onClick={() => void onGoogle()}
           >
             <GoogleMark />
             {t.login.google}

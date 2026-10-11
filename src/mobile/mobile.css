@@ -1,0 +1,92 @@
+@import "../styles.css";
+/* Vite root is mobile/, so point Tailwind at the shared components too. */
+@source "../";
+
+/* Native QR scanner: the camera is drawn BEHIND the WebView. */
+html:has(body.barcode-scanner-active),
+body.barcode-scanner-active,
+body.barcode-scanner-active #root > div {
+  background: transparent !important;
+}
+body.barcode-scanner-active {
+  visibility: hidden;
+}
+body.barcode-scanner-active .barcode-scanner-modal {
+  visibility: visible;
+}
+/* App feel: no tap highlight / overscroll glow, no text-select on chrome. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+nav button {
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------- themes */
+html.light {
+  --color-bg: #f6f7fb;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #eef0f5;
+  --color-fg: #10131a;
+  --color-muted: #5b6372;
+  --color-subtle: #7a8290;
+  --color-primary: #0d9488;
+  --color-primary-fg: #ffffff;
+  --color-border: #e2e5ec;
+  --color-ring: #0d9488;
+  --shadow-border: 0 0 0 1px rgb(16 19 26 / 0.07), 0 1px 2px rgb(16 19 26 / 0.04);
+  --shadow-border-hover: 0 0 0 1px rgb(16 19 26 / 0.14);
+  color-scheme: light;
+}
+html:not(.light) {
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------ eye candy */
+.hero-gradient {
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgb(45 212 191 / 0.55), transparent 60%),
+    radial-gradient(90% 90% at 100% 10%, rgb(139 92 246 / 0.55), transparent 60%),
+    radial-gradient(90% 90% at 60% 120%, rgb(236 72 153 / 0.4), transparent 60%),
+    #0b1020;
+  background-size: 160% 160%;
+  animation: hero-shift 14s ease-in-out infinite alternate;
+}
+.pro-gradient {
+  background: linear-gradient(120deg, #f59e0b, #ec4899 45%, #8b5cf6 75%, #2dd4bf);
+  background-size: 220% 220%;
+  animation: hero-shift 8s ease-in-out infinite alternate;
+}
+.pro-text {
+  background: linear-gradient(90deg, #fbbf24, #f472b6, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@keyframes hero-shift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+.float-slow { animation: floaty 6s ease-in-out infinite; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+.shimmer { position: relative; overflow: hidden; }
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.35) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: shimmer 2.8s ease-in-out infinite;
+}
+@keyframes shimmer { 60%, 100% { transform: translateX(100%); } }
+.screen-in { animation: screen-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.press { transition: transform 0.12s ease; }
+.press:active { transform: scale(0.97); }

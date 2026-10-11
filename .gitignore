@@ -1,0 +1,11 @@
+node_modules/
+*.log
+mobile/dist/
+# Android signing material never goes in the repo
+*.jks
+*.keystore
+keystore.properties
+secrets/
+
+# Build output - Vercel must build it (the committed copy lacked node_modules/tslib -> 500)
+.vercel/
