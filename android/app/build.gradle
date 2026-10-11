@@ -9,6 +9,11 @@ def signingValue = { String key ->
     return v?.trim() ? v.trim() : null
 }
 def releaseKeystore = signingValue('ANDROID_KEYSTORE_FILE')
+// versionCode: 1 locally (first Play upload); CI passes ANDROID_VERSION_CODE.
+def qrVersionCode = ((signingValue('ANDROID_VERSION_CODE') ?: '1') as String).trim() as Integer
+if (qrVersionCode < 1 || qrVersionCode > 2100000000) {
+    throw new GradleException("ANDROID_VERSION_CODE must be 1..2100000000, got ${qrVersionCode}")
+}
 def hasReleaseSigning = releaseKeystore && file(releaseKeystore).exists() &&
         signingValue('ANDROID_KEYSTORE_PASSWORD') && signingValue('ANDROID_KEY_ALIAS')
 
@@ -21,8 +26,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI may override versionCode (e.g. with the run number) so every
         // uploaded bundle is higher than the last one.
-        versionCode((signingValue('ANDROID_VERSION_CODE') ?: '3') as Integer)
-        versionName "1.2.0"
+        versionCode(qrVersionCode)
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -19,8 +19,11 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
       VITE_REVENUECAT_ANDROID_API_KEY: ${{ vars.VITE_REVENUECAT_ANDROID_API_KEY }}
-      # Every Play upload needs a higher versionCode.
-      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      # Every Play upload needs a higher versionCode. Local builds use 1 (first
+      # Play upload). CI: repo variable ANDROID_VERSION_CODE if set (bump it per
+      # release), else the workflow run number. build.gradle rejects values
+      # outside 1..2100000000 (Play's limit).
+      ANDROID_VERSION_CODE: ${{ vars.ANDROID_VERSION_CODE || github.run_number }}
     steps:
       - uses: actions/checkout@v4
 

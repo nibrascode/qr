@@ -66,8 +66,8 @@ ANDROID_KEY_ALIAS=qr-upload ANDROID_KEY_PASSWORD=… ./gradlew bundleRelease
 Shortcuts: `npm run android:apk`, `npm run android:aab`, `npm run dev:mobile`
 (browser preview on :8082; the camera scanner falls back to the web scanner).
 
-Version: `versionName` 1.2.0 in `android/app/build.gradle` (also
-`src/mobile/version.ts`); `versionCode` defaults to 3 and CI sets it to the run number.
+Version: `versionName` 1.0.0 in `android/app/build.gradle` (also
+`src/mobile/version.ts`); `versionCode` is 1 locally (first Play upload); CI uses the repo variable `ANDROID_VERSION_CODE` if set, else the run number (must stay 1..2100000000 and increase with every upload).
 
 ## CI (`.github/workflows/build-apk.yml`)
 
@@ -89,3 +89,12 @@ Repository secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -w0 qr-upload.jks`),
 - Keep the upload keystore + passwords backed up outside the repo — losing it
   requires an upload-key reset through Play support.
 - App icon / splash: replace `android/app/src/main/res/mipmap-*` (e.g. `@capacitor/assets`).
+
+## App icon & splash
+
+Source: `/workspace/icon/qr-icon.png` (1024², full-bleed, not in the repo).
+Generated: `mipmap-*/ic_launcher_foreground.png` (adaptive foreground, 108dp,
+full-bleed; background colour `#1A1470`), `ic_launcher.png` / `ic_launcher_round.png`
+(legacy, all densities), `drawable*/splash.png` (pre-Android-12 splash) and the
+Android 12+ SplashScreen theme (`values/styles.xml`, background `#14105E`).
+Play Store icon: `/workspace/icon/play-icon-512.png`.
