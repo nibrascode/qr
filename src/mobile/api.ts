@@ -18,6 +18,14 @@ export const API_BASE_URL = (
   "https://qr-rust-one.vercel.app"
 ).replace(/\/+$/, "");
 
+/**
+ * Optional build-time fallback for the PUBLIC Google Web client id (used as the
+ * native sheet's serverClientId) when /api/mobile/config is unreachable.
+ * Injected from the environment at build time; never committed.
+ */
+const BUILD_GOOGLE_WEB_CLIENT_ID =
+  (import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined)?.trim() || null;
+
 const TOKEN_KEY = "qr.session-token";
 const ME_KEY = "qr.me";
 
@@ -130,12 +138,23 @@ export async function fetchMe(): Promise<Me | null> {
 /** Native Google sign-in: Google ID token → Better Auth session (bearer token). */
 export async function signInWithGoogle(): Promise<Me> {
   if (!Capacitor.isNativePlatform()) throw new Error("Google sign-in works in the Android app");
-  const config = await fetchConfig();
-  if (!config.google || !config.googleWebClientId) {
-    throw new ApiError("Google sign-in is not configured on the server yet", 503);
+  // Runtime config from the backend is the source of truth; the build-time id
+  // is only a fallback when the config endpoint can't be reached.
+  let webClientId: string | null = null;
+  try {
+    const config = await fetchConfig();
+    if (!config.google) {
+      throw new ApiError("Google sign-in is not configured on the server yet", 503);
+    }
+    webClientId = config.googleWebClientId;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 503) throw err;
+    webClientId = BUILD_GOOGLE_WEB_CLIENT_ID;
+    if (!webClientId) throw err;
   }
+  if (!webClientId) throw new ApiError("Google sign-in is not configured", 503);
   const { SocialLogin } = await import("@capgo/capacitor-social-login");
-  await SocialLogin.initialize({ google: { webClientId: config.googleWebClientId, mode: "online" } });
+  await SocialLogin.initialize({ google: { webClientId, mode: "online" } });
   const login = await SocialLogin.login({ provider: "google", options: {} });
   const result = login.result as { idToken?: string | null; accessToken?: { token?: string } | null };
   if (!result.idToken) throw new Error("Google did not return an ID token");

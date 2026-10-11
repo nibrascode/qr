@@ -54,6 +54,7 @@ Requirements: Node 22, JDK 21, Android SDK 36.
 ```bash
 npm ci
 npm run build:mobile                 # VITE_API_BASE_URL=… to change the backend
+# optional: VITE_GOOGLE_WEB_CLIENT_ID="$GOOGLE_CLIENT_ID" npm run build:mobile
 npx cap sync android
 cd android
 ./gradlew assembleDebug              # → app/build/outputs/apk/debug/app-debug.apk
@@ -77,7 +78,9 @@ release AAB (artifact `QR-release-aab`).
 
 Repository secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -w0 qr-upload.jks`),
 `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`qr-upload`),
-`ANDROID_KEY_PASSWORD`. Optional variable: `VITE_API_BASE_URL`.
+`ANDROID_KEY_PASSWORD`. Optional variables: `VITE_API_BASE_URL`,
+`GOOGLE_WEB_CLIENT_ID` (public Web client id, build-time fallback for native
+Google sign-in; the app normally reads it from `/api/mobile/config`).
 
 ## Play Store
 

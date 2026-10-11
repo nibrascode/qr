@@ -41,3 +41,19 @@ Grok-broker Google button and the app's Google button reports "not configured".
 - **App**: `@capgo/capacitor-social-login` (Credential Manager, `webClientId` =
   Web client id from `/api/mobile/config`) → ID token →
   `POST /api/auth/sign-in/social` → bearer session token (`src/mobile/api.ts`).
+
+## Local verification (2026-10-11)
+
+With the provided client id/secret the local server builds the correct request
+(`accounts.google.com/o/oauth2/v2/auth`, right `client_id`,
+`redirect_uri=http://localhost:8080/api/auth/callback/google`,
+`scope=email profile openid`, `prompt=select_account`), but Google rejects it:
+
+- `http://localhost:8080/api/auth/callback/google` → `Error 400: invalid_request`
+  "The loopback flow has been blocked…" (Google's message for loopback redirects
+  on a client that isn't a Web-application client, or that has no such URI).
+- `https://qr-rust-one.vercel.app/api/auth/callback/google` → `redirect_uri_mismatch`.
+
+So in Google Cloud → Credentials, check that the id in `GOOGLE_CLIENT_ID` is the
+**Web application** client (not the Android one) and add both redirect URIs
+above to it (changes can take a few minutes to apply).

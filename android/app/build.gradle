@@ -40,6 +40,17 @@ android {
             }
         }
     }
+    // Optional per-ABI APKs for sharing smaller test builds:
+    //   ./gradlew assembleDebug -PqrAbiSplit=true
+    // (AABs are split by Google Play automatically; this does not affect them.)
+    splits {
+        abi {
+            enable project.hasProperty('qrAbiSplit')
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+            universalApk false
+        }
+    }
     buildTypes {
         release {
             if (hasReleaseSigning) {

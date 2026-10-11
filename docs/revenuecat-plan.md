@@ -28,7 +28,8 @@ Use Google Play regional pricing to make prices lower in AZ/TR/RU/Arab markets.
 | `VITE_REVENUECAT_ANDROID_API_KEY` | client (public) | `goog_…` |
 | `VITE_REVENUECAT_IOS_API_KEY` | client (public) | `appl_…` (later) |
 | `VITE_REVENUECAT_WEB_API_KEY` | client (public, optional) | `rcb_…` for web billing |
-| `REVENUECAT_SECRET_API_KEY` | server only | `sk_…`, REST API v1 `GET /subscribers/{id}` |
+| `REVENUECAT_PROJECT_ID` | server only | RevenueCat project id (`proj…`), required by REST API v2 paths |
+| `REVENUECAT_SECRET_API_KEY` | server only | **V2** secret key (`sk_…`), **read-only** permissions (customers/entitlements) |
 | `REVENUECAT_WEBHOOK_SECRET` | server only | value RevenueCat sends in `Authorization` |
 
 ## Implementation steps
@@ -37,8 +38,15 @@ Use Google Play regional pricing to make prices lower in AZ/TR/RU/Arab markets.
    after sign-in (App User ID = Better Auth user id), `logOut()` on sign-out.
 2. Account tab (`src/mobile/screens/account.tsx`): load `getOfferings()` and show store prices;
    purchase with `purchasePackage()`; add "Restore purchases".
-3. Server: `POST /api/revenuecat/webhook` (verify the secret) and a
-   `syncEntitlements` server fn that calls the REST API with the secret key and
+3. Server: `POST /api/revenuecat/webhook` (verify the secret; treat the event
+   only as a trigger) and a `syncEntitlements` helper that calls **REST API v2**
+   `GET https://api.revenuecat.com/v2/projects/{REVENUECAT_PROJECT_ID}/customers/{app_user_id}/active_entitlements`
+   (`Authorization: Bearer REVENUECAT_SECRET_API_KEY`, `environment=production`
+   in prod). v2 returns `entitlement_id`s (`entl…`), not lookup keys, so map them
+   via `GET /v2/projects/{REVENUECAT_PROJECT_ID}/entitlements` (`lookup_key`
+   `premium` / `business`, cache it). Key permissions (read-only):
+   `customer_information:customers:read` and
+   `project_configuration:entitlements:read`. No V1 `/subscribers` calls. It
    writes `profiles.plan = planFromEntitlements(active)`; the app reads it via
    `GET /api/mobile/me` (`src/mobile/api.ts`).
 4. **Remove free self-upgrade**: today `setPlan` lets any signed-in user switch

@@ -6,3 +6,6 @@ mobile/dist/
 *.keystore
 keystore.properties
 secrets/
+
+# Build output - Vercel must build it (the committed copy lacked node_modules/tslib -> 500)
+.vercel/
