@@ -1,12 +1,16 @@
-import { Check, LogOut } from "lucide-react";
+import { ChevronRight, Crown, LogOut, Moon, RefreshCcw, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
-import { LANGS, useI18n } from "@/lib/i18n";
-import { formatUsd, productFor, yearlySavingsPercent } from "@/lib/billing/products";
+import { LANGS, LOCALE, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { backendConfigured } from "../config";
+import { haptic } from "../haptics";
+import { usePrefs } from "../prefs";
+import { purchasesAvailable, restore } from "../purchases";
+import { useIsPro, useSession } from "../session";
 import { MOBILE_VERSION } from "../version";
-import { useSession } from "../session";
+import { Card, ScreenTitle, usePaywall } from "../ui";
 import { useM } from "../use-m";
 
 function GoogleMark() {
@@ -23,51 +27,54 @@ function GoogleMark() {
 export function AccountScreen() {
   const { t, lang, setLang } = useI18n();
   const m = useM();
-  const { me, busy, signIn, signOut } = useSession();
-  const plan = me?.plan ?? "free";
+  const { user, busy, signIn, signOut, storePro, setStorePro } = useSession();
+  const isPro = useIsPro();
+  const showPaywall = usePaywall((s) => s.show);
+  const { theme, setTheme } = usePrefs();
 
   const onSignIn = async () => {
     try {
       await signIn();
+      haptic("success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : t.login.error;
+      if (/cancel/i.test(msg)) return;
       toast.error(/network|timeout|connect|fetch/i.test(msg) ? m.offline : msg);
     }
   };
 
-  const tiers = [
-    {
-      id: "premium" as const,
-      name: t.pricing.premium,
-      items: [t.pricing.p2, t.pricing.p3, t.pricing.p6, t.pricing.p7],
-      prices: [productFor("premium", "monthly"), productFor("premium", "yearly"), productFor("premium", "lifetime")],
-    },
-    {
-      id: "business" as const,
-      name: t.pricing.business,
-      items: [t.pricing.b1, t.pricing.b2, t.pricing.b4],
-      prices: [productFor("business", "monthly"), productFor("business", "yearly")],
-    },
-  ];
-  const suffix = { monthly: t.pricing.month, yearly: t.pricing.year, lifetime: ` · ${t.pricing.once}` };
+  const onRestore = async () => {
+    try {
+      const res = await restore();
+      setStorePro(res);
+      toast[res.pro ? "success" : "message"](res.pro ? m.restored : m.nothingToRestore);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const manage = async () => {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url: "https://play.google.com/store/account/subscriptions?package=com.nibras.qr" });
+  };
 
   return (
     <div className="space-y-5 px-4 py-4">
-      <h1 className="font-display text-xl font-semibold">{m.account}</h1>
+      <ScreenTitle>{m.account}</ScreenTitle>
 
-      <section className="rounded-2xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]">
-        {me ? (
+      <Card>
+        {user ? (
           <div className="flex items-center gap-3">
-            {me.user.image ? (
-              <img src={me.user.image} alt="" className="size-11 rounded-full" referrerPolicy="no-referrer" />
+            {user.image ? (
+              <img src={user.image} alt="" className="size-12 rounded-full" referrerPolicy="no-referrer" />
             ) : (
-              <div className="grid size-11 place-items-center rounded-full bg-bg-subtle text-sm font-semibold">
-                {(me.user.name ?? me.user.email ?? "?").slice(0, 1).toUpperCase()}
+              <div className="grid size-12 place-items-center rounded-full bg-bg-subtle text-sm font-semibold">
+                {(user.name ?? user.email ?? "?").slice(0, 1).toUpperCase()}
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{me.user.name ?? me.user.email}</p>
-              <p className="truncate text-xs text-subtle">{me.user.email}</p>
+              <p className="truncate font-semibold">{user.name ?? user.email}</p>
+              <p className="truncate text-xs text-subtle">{user.email}</p>
             </div>
             <Button size="icon" variant="ghost" aria-label={m.signOut} disabled={busy} onClick={() => void signOut()}>
               <LogOut />
@@ -75,12 +82,12 @@ export function AccountScreen() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium">{m.signedOut}</p>
-            <p className="text-xs text-muted">{m.signInHint}</p>
+            <p className="font-semibold">{m.signedOut}</p>
+            <p className="text-xs text-muted">{backendConfigured ? m.signInHint : m.notConfigured}</p>
             <Button
               variant="outline"
-              className="h-12 w-full gap-2.5"
-              disabled={busy || !Capacitor.isNativePlatform()}
+              className="h-12 w-full gap-2.5 rounded-xl"
+              disabled={busy || !backendConfigured || !Capacitor.isNativePlatform()}
               onClick={() => void onSignIn()}
             >
               <GoogleMark />
@@ -88,62 +95,81 @@ export function AccountScreen() {
             </Button>
           </div>
         )}
-        <p className="mt-3 text-xs text-subtle">
-          {m.plan}: <span className="font-medium text-fg">{plan === "free" ? t.pricing.free : plan === "premium" ? t.pricing.premium : t.pricing.business}</span>
-        </p>
-      </section>
+      </Card>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-base font-semibold">{t.pricing.title}</h2>
-        {tiers.map((tier) => (
-          <article
-            key={tier.id}
-            className={cn(
-              "rounded-2xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]",
-              tier.id === "premium" && "ring-1 ring-primary/40",
-              plan === tier.id && "ring-2 ring-primary",
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold">{tier.name}</h3>
-              {plan === tier.id && <span className="text-xs text-primary">{t.pricing.current}</span>}
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {tier.prices.map((p) =>
-                p ? (
-                  <span key={p.id} className="rounded-lg bg-bg-subtle px-2.5 py-1.5 text-sm tabular-nums">
-                    {formatUsd(p.priceUsd)}
-                    <span className="text-xs text-muted">{suffix[p.period]}</span>
-                    {p.period === "yearly" && (
-                      <span className="ms-1 text-[10px] font-semibold text-primary">−{yearlySavingsPercent(tier.id)}%</span>
-                    )}
-                  </span>
-                ) : null,
+      {isPro ? (
+        <section className="rounded-2xl pro-gradient p-4 text-white shadow-lg shadow-fuchsia-500/20">
+          <div className="flex items-center gap-3">
+            <Crown className="size-7" />
+            <div className="flex-1">
+              <p className="font-display text-lg font-bold">{m.proActive}</p>
+              {storePro?.expiresAt && (
+                <p className="text-xs text-white/85">
+                  {m.expires}: {new Date(storePro.expiresAt).toLocaleDateString(LOCALE[lang])}
+                </p>
               )}
             </div>
-            <ul className="mt-3 space-y-1.5">
-              {tier.items.map((it) => (
-                <li key={it} className="flex gap-2 text-sm text-muted">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                  {it}
-                </li>
-              ))}
-            </ul>
-          </article>
-        ))}
-        <p className="text-xs text-subtle">{m.purchasesSoon}</p>
-      </section>
-
-      <section className="rounded-2xl bg-bg-elevated p-4 shadow-[var(--shadow-border)]">
-        <p className="mb-2 text-sm font-medium">{m.language}</p>
-        <div className="grid grid-cols-4 gap-2">
-          {LANGS.map((l) => (
-            <Button key={l.id} size="sm" variant={lang === l.id ? "default" : "outline"} onClick={() => setLang(l.id)}>
-              {l.label}
+          </div>
+          {storePro?.expiresAt && (
+            <Button size="sm" variant="secondary" className="mt-3" onClick={() => void manage()}>
+              {m.manage}
             </Button>
-          ))}
+          )}
+        </section>
+      ) : (
+        <button
+          type="button"
+          onClick={showPaywall}
+          className="press shimmer flex w-full items-center gap-3 rounded-2xl pro-gradient p-4 text-start text-white"
+        >
+          <Crown className="size-7 shrink-0" />
+          <span className="flex-1">
+            <span className="block font-display text-lg font-bold">{m.proBannerTitle}</span>
+            <span className="block text-xs text-white/85">{m.proBannerBody}</span>
+          </span>
+          <ChevronRight className="rtl:rotate-180" />
+        </button>
+      )}
+      {!isPro && purchasesAvailable() && (
+        <Button variant="ghost" size="sm" onClick={() => void onRestore()}>
+          <RefreshCcw /> {m.restore}
+        </Button>
+      )}
+
+      <Card className="space-y-4">
+        <div>
+          <p className="mb-2 text-sm font-medium">{m.theme}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(["dark", "light"] as const).map((th) => (
+              <button
+                key={th}
+                type="button"
+                onClick={() => {
+                  haptic("tap");
+                  setTheme(th);
+                }}
+                className={cn(
+                  "press flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm",
+                  theme === th ? "bg-primary text-primary-fg" : "bg-bg-subtle",
+                )}
+              >
+                {th === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+                {th === "dark" ? m.dark : m.light}
+              </button>
+            ))}
+          </div>
         </div>
-      </section>
+        <div>
+          <p className="mb-2 text-sm font-medium">{m.language}</p>
+          <div className="grid grid-cols-4 gap-2">
+            {LANGS.map((l) => (
+              <Button key={l.id} size="sm" variant={lang === l.id ? "default" : "outline"} onClick={() => setLang(l.id)}>
+                {l.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </Card>
 
       <p className="text-center text-xs text-subtle">
         Nibras QR · {t.legal.version} {MOBILE_VERSION}

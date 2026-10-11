@@ -54,3 +54,5 @@ Use Google Play regional pricing to make prices lower in AZ/TR/RU/Arab markets.
    downgrades or drop it once RevenueCat sets plans.
 5. Play Console: create the products above, link a service account in
    RevenueCat, set up license testers.
+
+> **Status (2026-10-11):** implemented for the mobile app on Supabase — see `docs/mobile-backend.md`.

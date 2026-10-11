@@ -1,2 +1,2 @@
-/** Keep in sync with versionName in android/app/build.gradle. */
-export const MOBILE_VERSION = "1.1.0";
+/** Shown on the account screen; keep in sync with android/app/build.gradle versionName. */
+export const MOBILE_VERSION = "1.2.0";

@@ -23,12 +23,18 @@ export function ExportBar({
   name,
   plan,
   onLocked,
+  pngSize,
+  printPdf = false,
 }: {
   value: string;
   design: QrDesign;
   name: string;
   plan: Plan;
   onLocked: () => void;
+  /** Override PNG/JPG pixel size (HQ plans only). */
+  pngSize?: number;
+  /** White, print-ready PDF page instead of the dark brand page. */
+  printPdf?: boolean;
 }) {
   const { t } = useI18n();
   const limits = PLAN_LIMITS[plan];
@@ -38,7 +44,7 @@ export function ExportBar({
   const svg = () => renderQrSvg(value, design, { branded });
 
   const exportPng = async (jpeg = false) => {
-    const px = limits.hq ? 2048 : 640;
+    const px = limits.hq ? (pngSize ?? 2048) : 640;
     const blob = await svgToPng(svg(), px, jpeg);
     downloadBlob(blob, `${fileBase}.${jpeg ? "jpg" : "png"}`);
   };
@@ -51,16 +57,19 @@ export function ExportBar({
 
   const exportPdf = async () => {
     if (!limits.pdf) return onLocked();
-    const png = await svgToPng(svg(), 1600);
+    const png = await svgToPng(svg(), limits.hq ? Math.max(1600, pngSize ?? 0) : 1600);
     const dataUrl = await blobToDataUrl(png);
     const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
     const w = 360;
     const x = (595.28 - w) / 2;
     const y = 140;
-    doc.setFillColor(9, 10, 12);
-    doc.rect(0, 0, 595.28, 841.89, "F");
+    if (!printPdf) {
+      doc.setFillColor(9, 10, 12);
+      doc.rect(0, 0, 595.28, 841.89, "F");
+    }
     doc.addImage(dataUrl, "PNG", x, y, w, w);
-    doc.setTextColor(238, 241, 244);
+    if (printPdf) doc.setTextColor(20, 20, 20);
+    else doc.setTextColor(238, 241, 244);
     doc.setFontSize(11);
     doc.text(name || "Nibras QR", 297.64, y + w + 28, { align: "center" });
     downloadBlob(doc.output("blob"), `${fileBase}.pdf`);

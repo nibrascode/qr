@@ -12,11 +12,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Backend for sign-in / plan only; the UI is bundled in the app.
-      # Override with the repo variable VITE_API_BASE_URL.
-      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://qr-rust-one.vercel.app' }}
-      # Public Google Web client id, fallback when /api/mobile/config is unreachable.
+      # PUBLIC build-time config for the bundled app (repo Variables, not secrets):
+      # Supabase backend, Google Web client id (native sign-in serverClientId),
+      # RevenueCat Android public SDK key.
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://rbnhwyvpuobdmgqjdiyj.supabase.co' }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
       VITE_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+      VITE_REVENUECAT_ANDROID_API_KEY: ${{ vars.VITE_REVENUECAT_ANDROID_API_KEY }}
       # Every Play upload needs a higher versionCode.
       ANDROID_VERSION_CODE: ${{ github.run_number }}
     steps:

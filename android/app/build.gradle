@@ -21,8 +21,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI may override versionCode (e.g. with the run number) so every
         // uploaded bundle is higher than the last one.
-        versionCode((signingValue('ANDROID_VERSION_CODE') ?: '2') as Integer)
-        versionName "1.1.0"
+        versionCode((signingValue('ANDROID_VERSION_CODE') ?: '3') as Integer)
+        versionName "1.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
