@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -15,12 +16,16 @@ import { defineConfig } from "vite";
  *   npm run dev:mobile     # browser preview on :8082
  */
 const repoRoot = fileURLToPath(new URL(".", import.meta.url));
+// Single source of truth for the shown version: android/app/build.gradle versionName.
+const appVersion =
+  /versionName\s+"([^"]+)"/.exec(readFileSync(new URL("./android/app/build.gradle", import.meta.url), "utf8"))?.[1] ?? "0.0.0";
 
 export default defineConfig({
   root: fileURLToPath(new URL("./mobile", import.meta.url)),
   base: "./",
   envDir: repoRoot,
   publicDir: false,
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   plugins: [tailwindcss(), viteReact()],
   server: { host: "0.0.0.0", port: 8082, strictPort: true, fs: { allow: [repoRoot] } },

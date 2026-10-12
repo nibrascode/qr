@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n";
+import { MOBILE_VERSION } from "../version";
 import { NIBRAS_CODE_URL, openUrl } from "../links";
 import { Barcode, ChevronRight, Crown, Layers, QrCode, ScanLine, Shapes, Sparkles } from "lucide-react";
 import { QrPreview } from "@/components/qr/preview";
@@ -12,6 +14,7 @@ import { useM } from "../use-m";
 
 export function HomeScreen() {
   const m = useM();
+  const { t } = useI18n();
   const { go, open } = useNav();
   const isPro = useIsPro();
   const user = useSession((s) => s.user);
@@ -122,6 +125,9 @@ export function HomeScreen() {
         onClick={() => void openUrl(NIBRAS_CODE_URL)}
       >
         {m.madeBy}
+        <span className="mt-0.5 block opacity-80">
+          {t.legal.version} {MOBILE_VERSION}
+        </span>
       </button>
     </div>
   );
