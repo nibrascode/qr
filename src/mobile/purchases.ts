@@ -12,6 +12,9 @@ export type ProInfo = { pro: boolean; expiresAt: string | null; willRenew: boole
 
 const NONE: ProInfo = { pro: false, expiresAt: null, willRenew: false, productId: null };
 let configured: Promise<boolean> | null = null;
+// Last configure() arguments, so the paywall can retry after a failed/late start.
+let lastArgs: { appUserID: string | null; onChange: (p: ProInfo) => void } | null = null;
+let lastConfigureError: string | null = null;
 
 async function rc() {
   return (await import("@revenuecat/purchases-capacitor")).Purchases;
@@ -37,6 +40,7 @@ export function configurePurchases(
   onChange: (p: ProInfo) => void,
 ): Promise<boolean> {
   if (!purchasesAvailable()) return Promise.resolve(false);
+  lastArgs = { appUserID, onChange };
   configured ??= (async () => {
     const Purchases = await rc();
     await Purchases.configure({ apiKey: REVENUECAT_ANDROID_KEY!, appUserID });
@@ -44,6 +48,7 @@ export function configurePurchases(
     return true;
   })().catch((err) => {
     configured = null;
+    lastConfigureError = describeError(err);
     console.warn("RevenueCat configure failed", err);
     return false;
   });
@@ -71,12 +76,41 @@ export async function resetIdentity(): Promise<ProInfo> {
   return proFrom(customerInfo);
 }
 
-/** Packages of the `default` offering (falls back to the current offering). */
-export async function getPackages(): Promise<PurchasesPackage[]> {
-  if (!(await configured)) return [];
-  const offerings = await (await rc()).getOfferings();
-  const offering = offerings.all[OFFERING_ID] ?? offerings.current;
-  return offering?.availablePackages ?? [];
+/** Short, user-visible description of a RevenueCat/Capacitor error (code + message). */
+export function describeError(err: unknown): string {
+  const e = (err ?? {}) as { code?: unknown; message?: unknown; readableErrorCode?: unknown; underlyingErrorMessage?: unknown };
+  const parts = [
+    e.readableErrorCode ?? e.code,
+    typeof e.message === "string" ? e.message : null,
+    typeof e.underlyingErrorMessage === "string" && e.underlyingErrorMessage !== e.message ? e.underlyingErrorMessage : null,
+  ].filter((x) => x !== undefined && x !== null && x !== "");
+  return parts.length ? parts.map(String).join(" · ").slice(0, 300) : String(err).slice(0, 300);
+}
+
+export type PackagesResult = { packages: PurchasesPackage[]; error: string | null; offering: string | null };
+
+/**
+ * Every package of the `default` offering (or the current one), whatever its
+ * product ids — empty packages (no store product, e.g. $rc_lifetime with
+ * nothing attached) are simply not returned by the SDK / filtered here.
+ */
+export async function getPackages(): Promise<PackagesResult> {
+  if (!purchasesAvailable()) return { packages: [], error: "store-unavailable", offering: null };
+  let ok = await configured;
+  if (!ok && lastArgs) ok = await configurePurchases(lastArgs.appUserID, lastArgs.onChange); // retry a failed start
+  if (!ok) return { packages: [], error: lastConfigureError ?? "RevenueCat not configured", offering: null };
+  try {
+    const offerings = await (await rc()).getOfferings();
+    const offering = offerings.all?.[OFFERING_ID] ?? offerings.current ?? null;
+    const packages = (offering?.availablePackages ?? []).filter((p) => p?.product && p.product.priceString);
+    return {
+      packages,
+      offering: offering?.identifier ?? null,
+      error: packages.length ? null : offering ? `offering "${offering.identifier}" has no products from Google Play` : "no current offering",
+    };
+  } catch (err) {
+    return { packages: [], error: describeError(err), offering: null };
+  }
 }
 
 export async function buy(pkg: PurchasesPackage): Promise<ProInfo | "cancelled"> {

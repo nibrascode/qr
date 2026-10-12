@@ -37,20 +37,26 @@ export function Paywall() {
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  // Load on every open (and on retry) — never keep an empty result forever.
   useEffect(() => {
-    if (!open || pkgs) return;
-    if (!purchasesAvailable()) {
-      setPkgs([]);
-      return;
-    }
-    getPackages()
-      .then((list) => {
-        const sorted = [...list].sort((a, b) => (ORDER[a.packageType] ?? 9) - (ORDER[b.packageType] ?? 9));
-        setPkgs(sorted);
-        setSelected(sorted.find((p) => p.packageType === "ANNUAL")?.identifier ?? sorted[0]?.identifier ?? null);
-      })
-      .catch(() => setPkgs([]));
-  }, [open, pkgs]);
+    if (!open) return;
+    let alive = true;
+    setPkgs(null);
+    setLoadError(null);
+    void getPackages().then(({ packages, error }) => {
+      if (!alive) return;
+      const sorted = [...packages].sort((a, b) => (ORDER[a.packageType] ?? 9) - (ORDER[b.packageType] ?? 9));
+      setPkgs(sorted);
+      setLoadError(sorted.length ? null : error);
+      setSelected(sorted.find((p) => p.packageType === "ANNUAL")?.identifier ?? sorted[0]?.identifier ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open, attempt]);
 
   const monthly = pkgs?.find((p) => p.packageType === "MONTHLY");
   const savings = useMemo(() => {
@@ -86,7 +92,13 @@ export function Paywall() {
   ];
 
   const label = (p: PurchasesPackage) =>
-    p.packageType === "ANNUAL" ? m.yearly : p.packageType === "MONTHLY" ? m.monthly : p.packageType === "LIFETIME" ? m.lifetime : p.product.title;
+    p.packageType === "ANNUAL"
+      ? m.yearly
+      : p.packageType === "MONTHLY"
+        ? m.monthly
+        : p.packageType === "LIFETIME"
+          ? m.lifetime
+          : p.product.title.replace(/\s*\(.*\)\s*$/, "") || p.identifier;
 
   const purchase = async () => {
     const pkg = pkgs?.find((p) => p.identifier === selected);
@@ -167,9 +179,17 @@ export function Paywall() {
           <div className="space-y-3">
             {pkgs === null && <div className="h-40 animate-pulse rounded-2xl bg-bg-subtle" />}
             {pkgs?.length === 0 && (
-              <p className="rounded-2xl bg-bg-subtle p-4 text-sm text-muted">
-                {purchasesAvailable() ? m.noPackages : m.storeUnavailable}
-              </p>
+              <div className="space-y-3 rounded-2xl bg-bg-subtle p-4 text-sm text-muted">
+                <p>{purchasesAvailable() ? m.noPackages : m.storeUnavailable}</p>
+                {purchasesAvailable() && (
+                  <Button size="sm" variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
+                    <RefreshCcw /> {m.retry}
+                  </Button>
+                )}
+                {loadError && loadError !== "store-unavailable" && (
+                  <p className="font-mono text-[10px] break-all text-subtle">RC: {loadError}</p>
+                )}
+              </div>
             )}
             {pkgs?.map((p) => {
               const isYear = p.packageType === "ANNUAL";
