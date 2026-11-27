@@ -1,8 +1,7 @@
 // Signed-in user deletes their own account. Verifies the caller's Supabase JWT,
 // then (service role) removes their rows and the auth user. qr_codes,
-// dynamic_links (+ link_scans), entitlements, store_purchases cascade from
-// auth.users; the RevenueCat webhook log (text app_user_id) and the Huawei
-// notification log (purchase tokens) are removed here.
+// dynamic_links (+ link_scans), entitlements cascade from auth.users; the
+// RevenueCat webhook log is keyed by text app_user_id, so it is removed here.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, json } from "../_shared/revenuecat.ts";
 
@@ -24,16 +23,8 @@ Deno.serve(async (req) => {
   const userId = data.user.id;
 
   try {
-    // Huawei notification log rows of this user's purchases (keyed by token).
-    const { data: purchases, error: pe } = await admin.from("store_purchases").select("purchase_token").eq("user_id", userId);
-    if (pe) throw new Error(`store_purchases: ${pe.message}`);
-    const tokens = (purchases ?? []).map((p: { purchase_token: string }) => p.purchase_token);
-    if (tokens.length) {
-      const { error: hn } = await admin.from("huawei_notifications").delete().in("purchase_token", tokens);
-      if (hn) throw new Error(`huawei_notifications: ${hn.message}`);
-    }
     // Explicit deletes first (also covers any table without a cascade).
-    for (const table of ["dynamic_links", "qr_codes", "store_purchases", "entitlements"]) {
+    for (const table of ["dynamic_links", "qr_codes", "entitlements"]) {
       const { error: e } = await admin.from(table).delete().eq("user_id", userId);
       if (e) throw new Error(`${table}: ${e.message}`);
     }

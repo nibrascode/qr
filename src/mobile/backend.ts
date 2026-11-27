@@ -5,6 +5,7 @@
 import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 import { createClient, type Session, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { combineServerPro } from "./huawei-pro";
 import { AUTH_REDIRECT_URL, GOOGLE_WEB_CLIENT_ID, IS_HUAWEI, SUPABASE_KEY, SUPABASE_URL } from "./config";
 
 export type MobileUser = { id: string; name: string | null; email: string | null; image: string | null };
@@ -178,6 +179,11 @@ export async function deleteAccount(): Promise<void> {
 }
 
 export async function verifyEntitlement(): Promise<{ pro: boolean; expiresAt: string | null } | null> {
+  if (IS_HUAWEI) return verifyEntitlementHuawei();
+  return verifyEntitlementShared();
+}
+
+async function verifyEntitlementShared(): Promise<{ pro: boolean; expiresAt: string | null } | null> {
   try {
     const { data, error } = await supabase().functions.invoke("verify-entitlement", { method: "POST" });
     if (error) return null;
@@ -187,9 +193,31 @@ export async function verifyEntitlement(): Promise<{ pro: boolean; expiresAt: st
   }
 }
 
+/** Huawei-only server state (store_purchases), from huawei-iap-verify with an empty body. */
+async function huaweiServerPro(): Promise<{ pro: boolean; expiresAt: string | null } | null> {
+  try {
+    const { data, error } = await supabase().functions.invoke("huawei-iap-verify", { method: "POST", body: {} });
+    if (error) return null;
+    return data as { pro: boolean; expiresAt: string | null };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Huawei build: Pro on the server = the existing entitlement (verify-entitlement,
+ * e.g. bought on Google Play) OR an active AppGallery subscription
+ * (huawei-iap-verify). The two are kept apart on the server on purpose.
+ */
+async function verifyEntitlementHuawei(): Promise<{ pro: boolean; expiresAt: string | null } | null> {
+  const [shared, huawei] = await Promise.all([verifyEntitlementShared(), huaweiServerPro()]);
+  return combineServerPro(shared, huawei);
+}
+
+
 /**
  * Huawei build: send owned HMS IAP purchases to the server, which verifies
- * them with Huawei and stores them (store_purchases → entitlements).
+ * them with Huawei and stores them in store_purchases (Huawei-only Pro state is returned).
  */
 export async function verifyHuaweiPurchases(
   purchases: { purchaseData: string; signature: string; signatureAlgorithm: string | null }[],

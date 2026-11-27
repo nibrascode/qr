@@ -69,24 +69,19 @@ export async function fetchProState(customerId: string): Promise<ProState> {
   return { isPro: true, expiresAt: exp };
 }
 
-/**
- * Stores the RevenueCat (Google Play) state in entitlements.rc_* and
- * recomputes the combined Pro state (RevenueCat OR Huawei, see
- * public.refresh_entitlement). Returns the combined state.
- */
 export async function saveProState(
   userId: string,
   state: ProState,
   extra: { source: string; productId?: string | null; store?: string | null; eventType?: string | null },
-): Promise<ProState> {
+): Promise<void> {
   const { error } = await adminClient()
     .from("entitlements")
     .upsert(
       {
         user_id: userId,
-        rc_is_pro: state.isPro,
-        rc_expires_at: state.expiresAt,
+        is_pro: state.isPro,
         entitlement: RC_ENTITLEMENT_LOOKUP,
+        expires_at: state.expiresAt,
         product_id: extra.productId ?? null,
         store: extra.store ?? null,
         source: extra.source,
@@ -96,17 +91,5 @@ export async function saveProState(
       { onConflict: "user_id" },
     );
   // 23503 = the app_user_id is not (or no longer) a Supabase user: ignore.
-  if (error?.code === "23503") return state;
-  if (error) throw new Error(`save failed: ${error.message}`);
-  return refreshEntitlement(userId);
-}
-
-/** Combined Pro state (RevenueCat OR Huawei) recomputed in the database. */
-export async function refreshEntitlement(userId: string): Promise<ProState> {
-  const { data, error } = await adminClient().rpc("refresh_entitlement", { uid: userId });
-  if (error) throw new Error(`refresh_entitlement failed: ${error.message}`);
-  const row = (Array.isArray(data) ? data[0] : data) as { is_pro?: boolean; expires_at?: string | null } | null;
-  const exp = row?.expires_at ?? null;
-  const isPro = !!row?.is_pro && (exp === null || Date.parse(exp) > Date.now());
-  return { isPro, expiresAt: isPro ? exp : null };
+  if (error && error.code !== "23503") throw new Error(`save failed: ${error.message}`);
 }

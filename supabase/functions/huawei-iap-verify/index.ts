@@ -1,13 +1,15 @@
 // Huawei build: the signed-in user sends the HMS IAP purchases owned by their
 // HUAWEI ID; each one is verified (IAP signature + Huawei Order/Subscription
-// server API) and stored in public.store_purchases. Returns the combined Pro
-// state (RevenueCat OR Huawei). Requires the user's Supabase JWT (verify_jwt on).
+// server API) and stored in public.store_purchases. Returns the user's
+// HUAWEI-ONLY Pro state (the app ORs it with verify-entitlement). It never
+// touches public.entitlements. Requires the user's Supabase JWT (verify_jwt on).
 //
 // Body: { purchases?: [{ purchaseData: string, signature: string, signatureAlgorithm?: string }] }
-// (empty body = just recompute and return the Pro state)
+// (empty body = just return the Huawei Pro state)
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   hasPublicKey,
+  huaweiProState,
   hasServerCredentials,
   PACKAGE_NAME,
   productOf,
@@ -17,7 +19,7 @@ import {
   verifyWithHuawei,
   type InAppPurchaseData,
 } from "../_shared/huawei.ts";
-import { adminClient, isUuid, json, refreshEntitlement } from "../_shared/revenuecat.ts";
+import { adminClient, isUuid, json } from "../_shared/revenuecat.ts";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -115,10 +117,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const state = await refreshEntitlement(userId);
-    return json({ pro: state.isPro, expiresAt: state.expiresAt, results }, 200, cors);
+    const state = await huaweiProState(userId);
+    return json({ pro: state.isPro, expiresAt: state.expiresAt, source: "huawei", results }, 200, cors);
   } catch (err) {
     console.error(String(err));
-    return json({ error: "refresh failed", results }, 500, cors);
+    return json({ error: "state failed", results }, 500, cors);
   }
 });

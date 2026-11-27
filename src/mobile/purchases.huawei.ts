@@ -6,8 +6,8 @@
  *   AppGallery (obtainOwnedPurchases), cached for offline use.
  * - When the user is signed in to Nibras QR, every owned purchase is sent to
  *   the `huawei-iap-verify` edge function, which checks it with Huawei's
- *   servers and stores it in `store_purchases`; `entitlements.is_pro` then
- *   becomes RevenueCat OR Huawei (cloud sync, dynamic QR, other devices).
+ *   servers and stores it in `store_purchases` (kept apart from
+ *   `entitlements`; `is_pro()` and the app's server Pro check read both).
  *
  * Product ids: supabase/functions/_shared/huawei-products.json (one place).
  */

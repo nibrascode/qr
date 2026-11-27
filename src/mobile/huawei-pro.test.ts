@@ -59,3 +59,17 @@ test("formatMicros", () => {
   assert.match(formatMicros(8_590_000, "SAR", "en-US"), /SAR\s?8\.59/);
   assert.equal(formatMicros(1_000_000, "???", "en-US"), "1.00 ???");
 });
+
+test("combineServerPro: Pro if either server answer is Pro", async () => {
+  const { combineServerPro } = await import("./huawei-pro.ts");
+  const off = { pro: false, expiresAt: null };
+  assert.equal(combineServerPro(null, null), null);
+  assert.deepEqual(combineServerPro(off, null), off);
+  assert.deepEqual(combineServerPro(null, off), off);
+  assert.deepEqual(combineServerPro(off, { pro: true, expiresAt: "2027-01-01T00:00:00Z" }), { pro: true, expiresAt: "2027-01-01T00:00:00Z" });
+  assert.deepEqual(
+    combineServerPro({ pro: true, expiresAt: "2027-01-01T00:00:00Z" }, { pro: true, expiresAt: "2027-06-01T00:00:00Z" }),
+    { pro: true, expiresAt: "2027-06-01T00:00:00Z" },
+  );
+  assert.deepEqual(combineServerPro({ pro: true, expiresAt: null }, { pro: true, expiresAt: "2027-06-01T00:00:00Z" }), { pro: true, expiresAt: null });
+});

@@ -219,3 +219,16 @@ export async function savePurchase(row: PurchaseRow): Promise<void> {
   const { error } = await adminClient().from("store_purchases").upsert(row, { onConflict: "store,purchase_token" });
   if (error) throw new Error(`store_purchases: ${error.message}`);
 }
+
+/**
+ * Huawei-only Pro state of one user (public.huawei_pro_state). Deliberately
+ * separate from entitlements / refresh_entitlement(): the app combines it with
+ * the verify-entitlement answer (Pro = either one).
+ */
+export async function huaweiProState(userId: string): Promise<{ isPro: boolean; expiresAt: string | null }> {
+  const { data, error } = await adminClient().rpc("huawei_pro_state", { uid: userId }).single();
+  if (error) throw new Error(`huawei_pro_state: ${error.message}`);
+  const row = (data ?? {}) as { is_pro?: boolean; expires_at?: string | null };
+  const isPro = !!row.is_pro;
+  return { isPro, expiresAt: isPro ? (row.expires_at ?? null) : null };
+}

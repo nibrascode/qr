@@ -15,9 +15,16 @@ olduğu kimi qalır.
 | Giriş | Google (native, Credential Manager) | Google (brauzerdə, Supabase OAuth) + e-poçt kodu |
 | `com.android.vending.BILLING` | var | silinib |
 
-- **Pro = RevenueCat (Google Play) VƏ YA aktiv Huawei alışı.** `entitlements`
-  cədvəlində hər mağazanın vəziyyəti ayrıca saxlanılır (`rc_*`, `huawei_*`),
-  `is_pro` / `expires_at` isə birləşmiş nəticədir (`public.refresh_entitlement`).
+- **Pro = mövcud hüquq (`verify-entitlement`, məs. Google Play) VƏ YA aktiv Huawei abunəsi.**
+  Huawei hissəsi **tam ayrıdır və yalnız əlavədir**: alışlar öz cədvəlində
+  (`store_purchases`) saxlanılır və öz funksiyaları ilə oxunur (`huawei_pro_state`,
+  `huawei_is_pro`). `entitlements`, onun trigger-i, `refresh_entitlement()` və
+  mövcud funksiyalara (`verify-entitlement`, `revenuecat-webhook`, `delete-account`)
+  **toxunulmur**. Huawei tətbiqi `verify-entitlement` və `huawei-iap-verify`
+  cavablarını birləşdirir (`combineServerPro`).
+- Yeganə istisna: `is_pro(uid)` köhnə şərti olduğu kimi saxlayır və əlavə olaraq
+  aktiv Huawei abunəsi üçün də `true` qaytarır (dinamik QR siyasətləri və
+  `record_link_scan` Huawei abunəçiləri üçün də işləsin deyə). Əvvəl Pro olan heç kəs dəyişmir.
 - Huawei alışları **HUAWEI ID-yə** bağlıdır. Tətbiqə daxil olmadan da Pro cihazda
   işləyir. Daxil olduqda alışlar serverdə yoxlanılır və hesaba yazılır (bulud
   sinxronizasiyası, dinamik QR, digər cihazlar üçün).
@@ -35,7 +42,7 @@ olduğu kimi qalır.
 - `src/mobile/purchases.ts` — ümumi interfeys; `purchases.revenuecat.ts` (Play), `purchases.huawei.ts` (Huawei)
 - `src/mobile/backend.ts` — brauzerdə Google girişi, e-poçt kodu, `verifyHuaweiPurchases`
 - `src/mobile/email-sign-in.tsx`, `src/mobile/strings-store.ts`, `src/mobile/privacy-text.ts` (`huaweiPolicy`)
-- `supabase/migrations/20261127090000_huawei_iap.sql` — `store_purchases`, `huawei_notifications`, `refresh_entitlement`, yeni `is_pro`
+- `supabase/migrations/20261127090000_huawei_iap.sql` — `store_purchases`, `huawei_notifications`, `huawei_pro_state`, `huawei_is_pro`, genişlənmiş `is_pro` (yalnız əlavə)
 - `supabase/functions/_shared/huawei.ts`, `huawei-iap-verify`, `huawei-iap-notify`
 
 ## Məhsul ID-ləri (bir yerdə)
@@ -110,22 +117,22 @@ Açarlar əlavə olunandan sonra hər alış Huawei serverində təsdiqlənir (`
 npx supabase login
 npx supabase link --project-ref rbnhwyvpuobdmgqjdiyj
 
-# 1) Miqrasiya (store_purchases, huawei_notifications, refresh_entitlement, is_pro)
+# 1) Miqrasiya (yalnız əlavə: store_purchases, huawei_notifications, huawei_* funksiyaları, is_pro OR huawei)
 npx supabase db push            # və ya SQL Editor-də 20261127090000_huawei_iap.sql
 
 # 2) Gizli açarlar
 npx supabase secrets set HUAWEI_IAP_PUBLIC_KEY="$(tr -d '\n' < iap_public_key.txt)" \
   HUAWEI_CLIENT_ID=120002599 HUAWEI_CLIENT_SECRET=... HUAWEI_NOTIFY_KEY="$(openssl rand -hex 24)"
 
-# 3) Funksiyalar (birləşmiş Pro məntiqi üçün köhnələr də yenidən deploy olunur)
+# 3) YALNIZ yeni funksiyalar. verify-entitlement / revenuecat-webhook /
+#    delete-account / lemon-* / r yenidən deploy OLUNMUR (canlı versiyalar
+#    başqa repodan da gəlir; onları bu repodan deploy etmək dəyişiklikləri silə bilər).
 npx supabase functions deploy huawei-iap-verify
 npx supabase functions deploy huawei-iap-notify --no-verify-jwt
-npx supabase functions deploy verify-entitlement
-npx supabase functions deploy revenuecat-webhook --no-verify-jwt
-npx supabase functions deploy delete-account
 ```
 
-Miqrasiya funksiyalardan **əvvəl** tətbiq olunmalıdır (`saveProState` yeni sütunlara yazır).
+Miqrasiya funksiyalardan **əvvəl** tətbiq olunmalıdır (funksiyalar `store_purchases` və `huawei_pro_state`-ə yazır/oxuyur).
+`delete-account` dəyişmir: `store_purchases` sətirləri `auth.users` silinəndə `on delete cascade` ilə silinir.
 
 ### Supabase Auth (Huawei versiyasında giriş)
 
@@ -133,9 +140,12 @@ Miqrasiya funksiyalardan **əvvəl** tətbiq olunmalıdır (`saveProState` yeni 
 2. *Authentication → Providers → Google*: aktivdir; Client ID + **Client secret** (Web client) dolu olmalıdır.
 3. Google Cloud Console → Web client → *Authorized redirect URIs*:
    **`https://rbnhwyvpuobdmgqjdiyj.supabase.co/auth/v1/callback`**.
-4. *Authentication → Providers → Email*: aktiv. *Email Templates → Magic Link* şablonuna kod əlavə et:
-   `<p>Giriş kodun: <strong>{{ .Token }}</strong></p>` (tətbiq 6 rəqəmli kod istəyir).
-5. Tövsiyə: *Authentication → SMTP Settings* — öz SMTP (Supabase-in standart poçtu saatda bir neçə məktubla məhdudlaşır).
+4. *Authentication → Providers → Email*: aktiv, kod uzunluğu **8** (tətbiq 8 rəqəmli kod gözləyir).
+   **Hazırda e-poçt şablonlarında kod yoxdur** (yalnız link). E-poçt kodu ilə giriş işləsin deyə
+   *Email Templates → Magic Link* **və** *Confirm signup* şablonlarına əlavə et:
+   `<p>Giriş kodun: <strong>{{ .Token }}</strong></p>` (mövcud linki silmədən).
+5. **Lazımdır:** *Authentication → SMTP Settings* — öz SMTP. Supabase-in standart poçtu saatda 2 məktub
+   göndərir və yalnız layihə komandasının ünvanlarına çatdırır, ona görə istifadəçilər kodu almaz.
 
 ## Lokal yığım
 
@@ -165,5 +175,5 @@ CI (`.github/workflows/build-apk.yml`) hər iki versiyanı yığır: `QR-debug-a
 2. `QR-huawei-release` APK-nı (imzası AGC-dəki SHA-256 ilə eyni olmalıdır) quraşdır.
 3. Paywall → məhsullar AppGallery qiymətləri ilə görünməlidir → al → «Pro aktivdir».
 4. Hesab → Google və ya e-poçt kodu ilə daxil ol → Supabase-də `store_purchases` sətri,
-   `entitlements.huawei_is_pro = true`.
+   `select public.huawei_is_pro('<user id>')` = `true` (`entitlements` dəyişmir).
 5. «Bərpa et», «İdarə et» (Huawei abunə ekranı), abunəni ləğv et → bildiriş `huawei_notifications`-a düşür.

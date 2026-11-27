@@ -91,13 +91,13 @@ export function EmailSignIn() {
           <Input
             inputMode="numeric"
             autoComplete="one-time-code"
-            maxLength={10}
+            maxLength={8}
             placeholder={a.codePlaceholder}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
             onKeyDown={(e) => e.key === "Enter" && void verify()}
           />
-          <Button className="w-full" disabled={working || busy || code.length < 6} onClick={() => void verify()}>
+          <Button className="w-full" disabled={working || busy || code.length < 6 || code.length > 8} onClick={() => void verify()}>
             {a.verifyCode}
           </Button>
           <button type="button" className="block w-full text-center text-[11px] text-subtle underline" onClick={() => setSentTo(null)}>

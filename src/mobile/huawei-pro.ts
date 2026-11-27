@@ -96,3 +96,16 @@ export function formatMicros(micros: number, currency: string, locale?: string):
     return `${value.toFixed(2)} ${currency}`;
   }
 }
+
+/** Pro if either answer says so; null only when both calls failed (offline → keep cache). */
+export function combineServerPro(
+  a: { pro: boolean; expiresAt: string | null } | null,
+  b: { pro: boolean; expiresAt: string | null } | null,
+): { pro: boolean; expiresAt: string | null } | null {
+  if (!a && !b) return null;
+  const on = [a, b].filter((x): x is { pro: boolean; expiresAt: string | null } => !!x && !!x.pro);
+  if (!on.length) return { pro: false, expiresAt: null };
+  if (on.some((x) => x.expiresAt === null)) return { pro: true, expiresAt: null };
+  const exp = on.map((x) => x.expiresAt as string).sort((x, y) => Date.parse(y) - Date.parse(x))[0];
+  return { pro: true, expiresAt: exp };
+}

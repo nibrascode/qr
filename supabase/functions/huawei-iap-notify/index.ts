@@ -6,7 +6,8 @@
 //   https://<project>.supabase.co/functions/v1/huawei-iap-notify?key=<HUAWEI_NOTIFY_KEY>
 // Deployed with verify_jwt = false. The notification is only a trigger: the
 // purchase is re-read from Huawei's server API (or from the signed receipt in
-// the notification) and the owner's Pro state is recomputed.
+// the notification) and store_purchases is updated (public.entitlements is
+// never touched; is_pro() reads store_purchases directly).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   hasServerCredentials,
@@ -16,7 +17,7 @@ import {
   verifyWithHuawei,
   type InAppPurchaseData,
 } from "../_shared/huawei.ts";
-import { adminClient, json, refreshEntitlement, safeEqual } from "../_shared/revenuecat.ts";
+import { adminClient, json, safeEqual } from "../_shared/revenuecat.ts";
 
 type Body = {
   version?: string;
@@ -123,7 +124,6 @@ Deno.serve(async (req) => {
       await savePurchase(toRow(r.user_id, data, by));
       users.add(r.user_id);
     }
-    for (const u of users) await refreshEntitlement(u);
     await log(`updated ${users.size}`);
     return json({ ok: true, users: users.size });
   } catch (err) {

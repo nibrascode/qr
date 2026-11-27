@@ -1,8 +1,7 @@
-// Signed-in user asks: "am I Pro?" → RevenueCat REST v2 (Google Play) is
-// re-read and stored in public.entitlements; the answer is the combined state
-// RevenueCat OR Huawei AppGallery (store_purchases). Requires the user's JWT.
+// Signed-in user asks: "am I Pro?" → checked against RevenueCat REST v2 and
+// cached in public.entitlements. Requires the user's Supabase JWT.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { adminClient, fetchProState, json, refreshEntitlement, saveProState } from "../_shared/revenuecat.ts";
+import { adminClient, fetchProState, json, saveProState } from "../_shared/revenuecat.ts";
 
 const cors = {
   "access-control-allow-origin": "*",
@@ -20,18 +19,12 @@ Deno.serve(async (req) => {
   const userId = data.user.id;
 
   try {
-    const rc = await fetchProState(userId);
-    const state = await saveProState(userId, rc, { source: "rest" });
+    const state = await fetchProState(userId);
+    await saveProState(userId, state, { source: "rest" });
     return json({ pro: state.isPro, expiresAt: state.expiresAt, source: "revenuecat" }, 200, cors);
   } catch (err) {
     console.error(String(err));
-    // RevenueCat unreachable / not configured: Huawei purchases + last stored RevenueCat state.
-    try {
-      const state = await refreshEntitlement(userId);
-      return json({ pro: state.isPro, expiresAt: state.expiresAt, source: "cache" }, 200, cors);
-    } catch (e2) {
-      console.error(String(e2));
-    }
+    // RevenueCat unreachable: answer from the last stored state.
     const { data: row } = await adminClient()
       .from("entitlements")
       .select("is_pro, expires_at")
