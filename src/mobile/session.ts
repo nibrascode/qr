@@ -35,7 +35,8 @@ type SessionState = {
   syncing: boolean;
   lastSync: number | null;
   init: () => Promise<void>;
-  signIn: () => Promise<void>;
+  /** Google by default; pass another sign-in (e.g. email code) to reuse the same post-sign-in steps. */
+  signIn: (via?: () => Promise<MobileUser>) => Promise<void>;
   signOut: () => Promise<void>;
   /** Deletes the account on the server, then signs out locally. */
   deleteAccount: () => Promise<void>;
@@ -108,10 +109,10 @@ export const useSession = create<SessionState>((set, get) => ({
     }
   },
 
-  signIn: async () => {
+  signIn: async (via) => {
     set({ busy: true });
     try {
-      const user = await signInWithGoogle();
+      const user = await (via ?? signInWithGoogle)();
       set({ user });
       try {
         get().setStorePro(await identify(user.id));

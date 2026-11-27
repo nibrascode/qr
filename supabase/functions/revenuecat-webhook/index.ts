@@ -91,13 +91,13 @@ Deno.serve(async (req) => {
       source = "webhook";
     }
     try {
-      await saveProState(userId, state, {
+      const combined = await saveProState(userId, state, {
         source,
         productId: ev.product_id,
         store: ev.store,
         eventType: ev.type,
       });
-      results[userId] = state.isPro;
+      results[userId] = combined.isPro;
     } catch (err) {
       console.error(String(err));
       // Forget the event so RevenueCat's retry is processed, not deduplicated.

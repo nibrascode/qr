@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HUAWEI AppGallery flavor: merged on top of src/main/AndroidManifest.xml. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Google Play Billing permission (added by the RevenueCat SDK) is not
+         used in the AppGallery build: payments go through HMS IAP. -->
+    <uses-permission android:name="com.android.vending.BILLING" tools:node="remove" />
+
+    <!-- HMS libraries declare allowBackup=false; keep the app's own value. -->
+    <application android:allowBackup="true" tools:replace="android:allowBackup">
+        <!-- AppGallery app id (also in agconnect-services.json). Lets HMS Core
+             find the app even when the AGConnect gradle plugin is not applied. -->
+        <meta-data
+            android:name="com.huawei.hms.client.appid"
+            android:value="appid=120002599" />
+
+        <activity android:name=".MainActivity">
+            <!-- Supabase OAuth (Google in the browser) returns here. -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.nibras.qr" android:host="auth-callback" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

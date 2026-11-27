@@ -1,0 +1,8 @@
+{
+  "$comment": "Huawei AppGallery IAP products of Nibras QR — the ONE place to change product ids. Used by the app (src/mobile/purchases.huawei.ts) and by the Supabase edge functions (huawei-iap-verify / huawei-iap-notify). Every product listed here unlocks Pro. kind: subscription = auto-renewable subscription (all in one subscription group), nonconsumable = one-time purchase.",
+  "products": [
+    { "id": "monthly", "kind": "subscription", "packageType": "MONTHLY" },
+    { "id": "yearly", "kind": "subscription", "packageType": "ANNUAL" },
+    { "id": "lifetime", "kind": "nonconsumable", "packageType": "LIFETIME" }
+  ]
+}

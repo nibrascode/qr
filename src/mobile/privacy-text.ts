@@ -120,3 +120,66 @@ export const QR_DELETE: { az: QrPolicy; en: QrPolicy } = {
     ],
   },
 };
+
+// ------------------------------------------------------------------ Huawei build
+/**
+ * HUAWEI AppGallery build (VITE_STORE=huawei): payments go through HUAWEI IAP
+ * (no RevenueCat / Google Play), sign-in is Google in the browser or an email
+ * code. Sections 6, 9 and 11 are replaced; other Google Play mentions are
+ * rewritten for AppGallery.
+ */
+const HUAWEI_SECTIONS: Record<"az" | "en", Record<string, [string, string]>> = {
+  az: {
+    "6": [
+      "6. Hesab (könüllü) — Google və ya e-poçt ilə giriş",
+      "Hesab olmadan tətbiqdən istifadə edə bilərsiniz. Google ilə (brauzer vasitəsilə) və ya e-poçtunuza göndərilən birdəfəlik kodla daxil ola bilərsiniz. Giriş Supabase (autentifikasiya xidməti) vasitəsilə həyata keçirilir və bu məlumatlar emal olunur: e-poçt ünvanı, Google ilə girişdə ad, profil şəklinin linki və Google hesab identifikatoru, həmçinin daxili istifadəçi identifikatoru. Bu məlumatlar hesabı idarə etmək, Pro statusunu hesabınıza bağlamaq və (Pro-da) sinxronizasiya üçün istifadə olunur. Sessiya açarları cihazda saxlanılır.",
+    ],
+    "9": [
+      "9. Ödənişlər (HUAWEI AppGallery)",
+      "Pro abunəlikləri və birdəfəlik alış HUAWEI In-App Purchases (AppGallery) ilə edilir; ödəniş məlumatları (kart və s.) yalnız Huawei tərəfindən emal olunur, biz onları görmürük. Daxil olmusunuzsa, alış təsdiqi (məhsul, alış tokeni, sifariş/abunə identifikatoru, bitmə tarixi) yoxlanılmaq üçün Huawei serverlərinə göndərilir və Pro statusu ilə birlikdə serverimizdə (Supabase) hesabınıza bağlı saxlanılır.",
+    ],
+    "11": [
+      "11. Üçüncü tərəf xidmətlər (emal edənlər)",
+      "Google (Google ilə giriş — brauzerdə, ML Kit — cihazda), Huawei (HUAWEI AppGallery — tətbiqin yayılması və ödənişlər), Supabase (autentifikasiya, verilənlər bazası və server funksiyaları; məlumatlar Aİ-də, Frankfurt regionunda saxlanılır). Hər birinin öz məxfilik siyasəti var: policies.google.com/privacy, consumer.huawei.com/privacy, supabase.com/privacy.",
+    ],
+  },
+  en: {
+    "6": [
+      "6. Account (optional) — Sign in with Google or email",
+      "You can use the app without an account. You can sign in with Google (in the browser) or with a one-time code sent to your email. Sign-in is handled by Supabase (authentication service) and we process: email address, for Google sign-in your name, profile picture URL and Google account identifier, and an internal user ID. This is used to manage your account, link Pro to it and (with Pro) sync. Session keys are stored on the device.",
+    ],
+    "9": [
+      "9. Payments (HUAWEI AppGallery)",
+      "Pro subscriptions and the one-time purchase are processed by HUAWEI In-App Purchases (AppGallery); payment details (cards etc.) are handled only by Huawei and never seen by us. If you are signed in, the purchase receipt (product, purchase token, order/subscription ID, expiry) is sent to Huawei's servers for verification and stored with your Pro status on our server (Supabase), linked to your account.",
+    ],
+    "11": [
+      "11. Third-party services (processors)",
+      "Google (Sign in with Google in the browser; ML Kit runs on-device), Huawei (HUAWEI AppGallery — distribution and payments), Supabase (authentication, database and server functions; data stored in the EU, Frankfurt region). Their policies: policies.google.com/privacy, consumer.huawei.com/privacy, supabase.com/privacy.",
+    ],
+  },
+};
+
+const HUAWEI_REWRITES: [RegExp, string][] = [
+  [/Google Play › Ödənişlər və abunəliklər › Nibras QR bölməsindən/g, "AppGallery › Mən › Abunəliklər › Nibras QR (və ya tətbiqdə Hesab › İdarə et) bölməsindən"],
+  [/Google Play › Payments & subscriptions › Nibras QR/g, "AppGallery › Me › Subscriptions › Nibras QR (or in the app: Account › Manage)"],
+  [/Google Play › Ödənişlər və abunəliklər bölməsindən/g, "AppGallery › Mən › Abunəliklər bölməsindən"],
+  [/Google Play və RevenueCat/g, "Huawei"],
+  [/Google Play and RevenueCat/g, "Huawei"],
+  [/Google Play/g, "HUAWEI AppGallery"],
+];
+
+export function huaweiPolicy(policy: QrPolicy, lang: "az" | "en"): QrPolicy {
+  const sections = HUAWEI_SECTIONS[lang];
+  const out: string[] = [];
+  const src = policy.paragraphs;
+  for (let i = 0; i < src.length; i++) {
+    const num = /^(\d+)\.\s/.exec(src[i])?.[1];
+    if (num && sections[num]) {
+      out.push(...sections[num]);
+      i++; // skip the original body paragraph
+      continue;
+    }
+    out.push(HUAWEI_REWRITES.reduce((s, [re, to]) => s.replace(re, to), src[i]));
+  }
+  return { ...policy, paragraphs: out };
+}

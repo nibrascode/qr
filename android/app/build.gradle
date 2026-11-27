@@ -56,6 +56,19 @@ android {
             universalApk false
         }
     }
+    // Store flavors. `play` = Google Play (RevenueCat / Play Billing), exactly
+    // the previous single build. `huawei` = AppGallery (HMS IAP), see
+    // docs/huawei.md. Both use applicationId com.nibras.qr. The web bundle must
+    // be built for the same store (VITE_STORE=huawei for the huawei flavor).
+    flavorDimensions = ["store"]
+    productFlavors {
+        play {
+            dimension "store"
+        }
+        huawei {
+            dimension "store"
+        }
+    }
     buildTypes {
         release {
             if (hasReleaseSigning) {
@@ -83,9 +96,23 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // HUAWEI AppGallery flavor only: HMS In-App Purchases (HuaweiIapPlugin).
+    huaweiImplementation "com.huawei.hms:iap:$hmsIapVersion"
 }
 
 apply from: 'capacitor.build.gradle'
+
+// AGConnect plugin (huawei flavor): processes android/app/src/huawei/agconnect-services.json.
+// The file holds a client secret/API key, so it is NOT committed: CI writes it
+// from the AGCONNECT_SERVICES_JSON_BASE64 secret, locally copy it there by hand.
+// Without it the huawei build still works (app id comes from the manifest
+// meta-data com.huawei.hms.client.appid), the plugin is just not applied.
+if (file('src/huawei/agconnect-services.json').exists()) {
+    apply plugin: 'com.huawei.agconnect'
+} else {
+    logger.info("src/huawei/agconnect-services.json not found, AGConnect plugin not applied.")
+}
 
 try {
     def servicesJSON = file('google-services.json')
