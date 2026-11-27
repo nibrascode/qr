@@ -1,5 +1,8 @@
 # Mobile backend — Supabase project NibrasQR
 
+> HUAWEI AppGallery build (HMS IAP, `store_purchases`, `huawei-iap-verify`,
+> `huawei-iap-notify`, combined Pro = RevenueCat OR Huawei): see `docs/huawei.md`.
+
 Project ref `rbnhwyvpuobdmgqjdiyj` (eu-central-1), URL
 `https://rbnhwyvpuobdmgqjdiyj.supabase.co`. Everything below is already applied
 to the project (migrations in `supabase/migrations`, functions in

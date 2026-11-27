@@ -41,23 +41,24 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Build bundled mobile web app (mobile/dist)
+      # ---------------------------------------------------------------- Google Play
+      - name: Build bundled mobile web app for Google Play (mobile/dist)
         run: npm run build:mobile
 
       - name: Capacitor sync
         run: npx cap sync android
 
-      - name: Build debug APK
+      - name: Build Play debug APK
         working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        run: chmod +x gradlew && ./gradlew assemblePlayDebug --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
           name: QR-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/play/debug/app-play-debug.apk
           if-no-files-found: error
 
-      - name: Build signed release AAB
+      - name: Build signed Play release AAB
         working-directory: android
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -71,11 +72,70 @@ jobs:
           fi
           export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/upload.jks"
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE"
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew bundlePlayRelease --no-daemon
           rm -f "$ANDROID_KEYSTORE_FILE"
 
       - uses: actions/upload-artifact@v4
         with:
           name: QR-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          path: android/app/build/outputs/bundle/playRelease/app-play-release.aab
+          if-no-files-found: warn
+
+      # ------------------------------------------------------ HUAWEI AppGallery
+      # Same sources, VITE_STORE=huawei web bundle + `huawei` Android flavor
+      # (HMS IAP, browser Google sign-in + email code). See docs/huawei.md.
+      - name: Build bundled mobile web app for HUAWEI AppGallery
+        env:
+          VITE_STORE: huawei
+          VITE_REVENUECAT_ANDROID_API_KEY: ''
+          VITE_HUAWEI_IAP_PUBLIC_KEY: ${{ vars.HUAWEI_IAP_PUBLIC_KEY }}
+        run: npm run build:mobile && npx cap copy android
+
+      - name: Write agconnect-services.json (secret)
+        env:
+          AGCONNECT_SERVICES_JSON_BASE64: ${{ secrets.AGCONNECT_SERVICES_JSON_BASE64 }}
+        run: |
+          if [ -z "$AGCONNECT_SERVICES_JSON_BASE64" ]; then
+            echo "::warning::AGCONNECT_SERVICES_JSON_BASE64 secret missing - Huawei build uses the manifest app id only (AGConnect plugin not applied)."
+            exit 0
+          fi
+          echo "$AGCONNECT_SERVICES_JSON_BASE64" | base64 -d > android/app/src/huawei/agconnect-services.json
+
+      - name: Build Huawei debug APK
+        working-directory: android
+        run: ./gradlew assembleHuaweiDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QR-huawei-debug-apk
+          path: android/app/build/outputs/apk/huawei/debug/app-huawei-debug.apk
+          if-no-files-found: error
+
+      - name: Build signed Huawei release APK + AAB
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
+            echo "::warning::Signing secrets missing - skipping Huawei release build."
+            exit 0
+          fi
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/upload.jks"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE"
+          ./gradlew assembleHuaweiRelease bundleHuaweiRelease --no-daemon
+          rm -f "$ANDROID_KEYSTORE_FILE"
+
+      - name: Remove agconnect-services.json
+        if: always()
+        run: rm -f android/app/src/huawei/agconnect-services.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QR-huawei-release
+          path: |
+            android/app/build/outputs/apk/huawei/release/app-huawei-release.apk
+            android/app/build/outputs/bundle/huaweiRelease/app-huawei-release.aab
           if-no-files-found: warn

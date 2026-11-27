@@ -9,3 +9,8 @@ secrets/
 
 # Build output - Vercel must build it (the committed copy lacked node_modules/tslib -> 500)
 .vercel/
+
+# HUAWEI AppGallery config: contains a client secret / API key.
+# CI writes it from the AGCONNECT_SERVICES_JSON_BASE64 secret (docs/huawei.md).
+android/app/src/huawei/agconnect-services.json
+android/app/agconnect-services.json

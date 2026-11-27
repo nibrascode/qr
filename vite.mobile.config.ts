@@ -10,7 +10,8 @@ import { defineConfig } from "vite";
  * Capacitor (webDir). Backend = Supabase (src/mobile/backend.ts + config.ts),
  * configured with PUBLIC build-time env: VITE_SUPABASE_URL,
  * VITE_SUPABASE_PUBLISHABLE_KEY, VITE_GOOGLE_WEB_CLIENT_ID,
- * VITE_REVENUECAT_ANDROID_API_KEY (see docs/mobile-backend.md).
+ * VITE_REVENUECAT_ANDROID_API_KEY (see docs/mobile-backend.md). VITE_STORE=huawei
+ * builds the HUAWEI AppGallery variant (docs/huawei.md).
  *
  *   npm run build:mobile   # → mobile/dist
  *   npm run dev:mobile     # browser preview on :8082

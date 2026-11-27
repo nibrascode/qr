@@ -11,6 +11,20 @@ export const SUPABASE_KEY = clean(env.VITE_SUPABASE_PUBLISHABLE_KEY) ?? clean(en
 export const GOOGLE_WEB_CLIENT_ID = clean(env.VITE_GOOGLE_WEB_CLIENT_ID);
 export const REVENUECAT_ANDROID_KEY = clean(env.VITE_REVENUECAT_ANDROID_API_KEY);
 
+/**
+ * Which store this build is for: "play" (default; Google Play Billing via
+ * RevenueCat, native Google sign-in) or "huawei" (AppGallery: HMS IAP, Google
+ * sign-in through the browser + email code). Set with VITE_STORE at
+ * `npm run build:mobile` time; the Android flavor must match (play/huawei).
+ */
+export type Store = "play" | "huawei";
+export const STORE: Store = clean(env.VITE_STORE) === "huawei" ? "huawei" : "play";
+export const IS_HUAWEI = STORE === "huawei";
+/** AppGallery IAP public key (base64, public by design). Optional client-side signature check. */
+export const HUAWEI_IAP_PUBLIC_KEY = clean(env.VITE_HUAWEI_IAP_PUBLIC_KEY);
+/** Deep link Supabase OAuth returns to in the Huawei build (AndroidManifest huawei flavor). */
+export const AUTH_REDIRECT_URL = "com.nibras.qr://auth-callback";
+
 /** RevenueCat entitlement that unlocks Pro. */
 export const PRO_ENTITLEMENT = "nibras_qr_pro";
 /** RevenueCat offering shown on the paywall. */

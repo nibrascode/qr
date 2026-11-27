@@ -16,24 +16,28 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { IS_HUAWEI } from "./config";
 import { haptic } from "./haptics";
-import { buy, getPackages, purchasesAvailable, restore, type PurchasesPackage } from "./purchases";
+import { buy, getPackages, purchasesAvailable, restore, type StorePackage } from "./purchases";
 import { useNav } from "./nav";
 import { useIsPro, useSession } from "./session";
 import { LIMITS } from "./storage";
 import { fmt } from "./strings";
+import { usePlanLabels } from "./strings-store";
 import { usePaywall } from "./ui";
 import { useM } from "./use-m";
 
-const ORDER: Record<string, number> = { ANNUAL: 0, MONTHLY: 1, LIFETIME: 2 };
+// WEEKLY only exists in the Huawei build (Play order unchanged).
+const ORDER: Record<string, number> = { ANNUAL: 0, MONTHLY: 1, WEEKLY: 2, LIFETIME: 3 };
 
 export function Paywall() {
   const m = useM();
+  const plans = usePlanLabels();
   const { open, hide } = usePaywall();
   const { t } = useI18n();
   const isPro = useIsPro();
   const { user, setStorePro, refreshServerPro } = useSession();
-  const [pkgs, setPkgs] = useState<PurchasesPackage[] | null>(null);
+  const [pkgs, setPkgs] = useState<StorePackage[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -91,14 +95,16 @@ export function Paywall() {
     [m.rExport, false, true],
   ];
 
-  const label = (p: PurchasesPackage) =>
+  const label = (p: StorePackage) =>
     p.packageType === "ANNUAL"
       ? m.yearly
       : p.packageType === "MONTHLY"
         ? m.monthly
         : p.packageType === "LIFETIME"
           ? m.lifetime
-          : p.product.title.replace(/\s*\(.*\)\s*$/, "") || p.identifier;
+          : p.packageType === "WEEKLY"
+            ? plans.weekly
+            : p.product.title.replace(/\s*\(.*\)\s*$/, "") || p.identifier;
 
   const purchase = async () => {
     const pkg = pkgs?.find((p) => p.identifier === selected);
@@ -187,7 +193,7 @@ export function Paywall() {
                   </Button>
                 )}
                 {loadError && loadError !== "store-unavailable" && (
-                  <p className="font-mono text-[10px] break-all text-subtle">RC: {loadError}</p>
+                  <p className="font-mono text-[10px] break-all text-subtle">{IS_HUAWEI ? "IAP" : "RC"}: {loadError}</p>
                 )}
               </div>
             )}

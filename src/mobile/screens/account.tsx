@@ -5,12 +5,13 @@ import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { LANGS, LOCALE, useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { backendConfigured } from "../config";
+import { backendConfigured, IS_HUAWEI } from "../config";
 import { haptic } from "../haptics";
 import { NIBRAS_CODE_URL, openUrl } from "../links";
 import { useNav } from "../nav";
 import { usePrefs } from "../prefs";
-import { purchasesAvailable, restore } from "../purchases";
+import { manageSubscriptions, purchasesAvailable, restore } from "../purchases";
+import { EmailSignIn } from "../email-sign-in";
 import { useIsPro, useSession } from "../session";
 import { MOBILE_VERSION } from "../version";
 import { Card, ScreenTitle, usePaywall } from "../ui";
@@ -71,8 +72,11 @@ export function AccountScreen() {
   };
 
   const manage = async () => {
-    const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url: "https://play.google.com/store/account/subscriptions?package=com.nibras.qr" });
+    try {
+      await manageSubscriptions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
@@ -110,6 +114,7 @@ export function AccountScreen() {
               <GoogleMark />
               {t.login.google}
             </Button>
+            {IS_HUAWEI && backendConfigured && Capacitor.isNativePlatform() && <EmailSignIn />}
             <button type="button" className="block w-full text-center text-[11px] text-subtle underline" onClick={() => openSub("privacy")}>
               {t.legal.privacy}
             </button>
