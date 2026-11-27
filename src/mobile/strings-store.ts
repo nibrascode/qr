@@ -80,3 +80,17 @@ export function useAuthM() {
   const { lang } = useI18n();
   return AUTH[lang];
 }
+
+/** Extra package name (Huawei weekly subscription). */
+const PLANS = {
+  az: { weekly: "Həftəlik" },
+  en: { weekly: "Weekly" },
+  ar: { weekly: "أسبوعي" },
+  ru: { weekly: "Неделя" },
+  tr: { weekly: "Haftalık" },
+} satisfies Record<Lang, { weekly: string }>;
+
+export function usePlanLabels() {
+  const { lang } = useI18n();
+  return PLANS[lang];
+}

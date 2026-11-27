@@ -23,7 +23,8 @@ create table if not exists public.store_purchases (
   user_id uuid not null references auth.users (id) on delete cascade,
   store text not null default 'huawei' check (store in ('huawei')),
   product_id text not null,
-  kind text not null check (kind in ('subscription', 'nonconsumable')),
+  -- all Huawei products are auto-renewable subscriptions (weekly/monthly/yearly)
+  kind text not null default 'subscription' check (kind in ('subscription')),
   purchase_token text not null,
   order_id text,
   subscription_id text,

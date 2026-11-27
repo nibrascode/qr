@@ -22,7 +22,8 @@ olduğu kimi qalır.
   işləyir. Daxil olduqda alışlar serverdə yoxlanılır və hesaba yazılır (bulud
   sinxronizasiyası, dinamik QR, digər cihazlar üçün).
 - Bir alış tokeni yalnız bir Nibras QR hesabına bağlana bilər (ilk bağlayan hesab).
-- `lifetime` məhsulu **consume edilmir** (yoxsa yenidən satılar).
+- Huawei-də **yalnız avtomatik yenilənən abunələr** var (həftəlik, aylıq, illik).
+  Ömürlük (birdəfəlik) paket yoxdur; AppGallery abunə müddəti ən çox 1 il olduğu üçün 5 illik paket də yoxdur.
 
 ### Kod xəritəsi
 
@@ -41,13 +42,16 @@ olduğu kimi qalır.
 
 Fayl: **`supabase/functions/_shared/huawei-products.json`** — həm tətbiq, həm
 server funksiyaları buradan oxuyur. ID dəyişsə, yalnız bu faylı dəyiş, tətbiqi
-yenidən yığ və funksiyaları yenidən deploy et.
+yenidən yığ və funksiyaları yenidən deploy et. Paywall AppGallery-nin qaytarmadığı
+(yaradılmamış / aktiv olmayan) məhsulları sadəcə göstərmir.
 
-| ID | Növ (AGC) | Paket | Tövsiyə olunan qiymət |
+Hamısı **Auto-renewable subscription**, bir abunə qrupunda: **`Nibras QR Pro`**.
+
+| ID | Müddət | Paket | Qiymət |
 |---|---|---|---|
-| `monthly` | Auto-renewable subscription (abunə qrupu: məs. `Nibras QR Pro`) | Aylıq | 1.99 USD |
-| `yearly` | Auto-renewable subscription (eyni qrup) | İllik | 9.99 USD |
-| `lifetime` | Non-consumable | Ömürlük | 19.99 USD |
+| `weekly` | 1 həftə | Həftəlik | 4 SAR |
+| `monthly` | 1 ay | Aylıq | 8.59 SAR |
+| `yearly` | 1 il | İllik | 42.99 SAR (endirimli) |
 
 ## AppGallery Connect-də ediləcəklər
 
@@ -59,15 +63,20 @@ paket `com.nibras.qr`, IAP aktivdir.
 2. **İmza sertifikatı:** *Project settings → General information → SHA-256 certificate fingerprint*
    — upload açarının (`qr-upload`) SHA-256-sını əlavə et (AppGallery app signing istifadə olunursa, onunkunu da).
    Almaq üçün: `keytool -list -v -keystore qr-upload.jks -alias qr-upload`.
-3. **Məhsullar:** *Operate → Product management → Products*: yuxarıdakı 3 məhsulu yarat
-   (iki abunə bir qrupda), qiymətləri təyin et, **Activate** et.
-4. **IAP parametrləri** (*Earn → In-App Purchases → Settings*):
+3. **Avtomatik yenilənən abunələr üçün icazə:** Huawei bu növ məhsulları yaratmazdan əvvəl
+   təsdiq istəyir. **jointoperation@huawei.com** ünvanına e-poçt göndər (tətbiq adı Nibras QR,
+   App ID `120002599`, paket `com.nibras.qr`, şirkət/hesab adı, abunə məhsulları və qiymətləri).
+   Cavab təxminən **5 iş günü** çəkir; təsdiqdən əvvəl abunə məhsulları yaradıla bilmir.
+4. **Məhsullar:** *Operate → Product management → Products*: abunə qrupu `Nibras QR Pro`,
+   içində yuxarıdakı 3 abunəni yarat (`weekly`, `monthly`, `yearly`), SAR qiymətlərini təyin et,
+   **Activate** et.
+5. **IAP parametrləri** (*Earn → In-App Purchases → Settings*):
    - Public key — artıq var (`iap_public_key.txt`).
    - İmza alqoritmi: `SHA256WithRSA/PSS` (kod hər ikisini qəbul edir).
    - **Subscription notification URL** (versiya **v2**):
      `https://rbnhwyvpuobdmgqjdiyj.supabase.co/functions/v1/huawei-iap-notify?key=<HUAWEI_NOTIFY_KEY>`
-5. **Sandbox testerlər:** *Users and permissions → Sandbox → Test accounts* — HUAWEI ID-ləri əlavə et.
-6. **Server API açarları:** *Project settings → General information → App information*:
+6. **Sandbox testerlər:** *Users and permissions → Sandbox → Test accounts* — HUAWEI ID-ləri əlavə et.
+7. **Server API açarları:** *Project settings → General information → App information*:
    OAuth 2.0 **Client ID** (bu tətbiqdə `120002599`, `agconnect-services.json` → `oauth_client.client_id`)
    və **Client secret / App secret**. Bunlar `HUAWEI_CLIENT_ID` / `HUAWEI_CLIENT_SECRET` olur.
 

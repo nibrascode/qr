@@ -23,13 +23,16 @@ import { useNav } from "./nav";
 import { useIsPro, useSession } from "./session";
 import { LIMITS } from "./storage";
 import { fmt } from "./strings";
+import { usePlanLabels } from "./strings-store";
 import { usePaywall } from "./ui";
 import { useM } from "./use-m";
 
-const ORDER: Record<string, number> = { ANNUAL: 0, MONTHLY: 1, LIFETIME: 2 };
+// WEEKLY only exists in the Huawei build (Play order unchanged).
+const ORDER: Record<string, number> = { ANNUAL: 0, MONTHLY: 1, WEEKLY: 2, LIFETIME: 3 };
 
 export function Paywall() {
   const m = useM();
+  const plans = usePlanLabels();
   const { open, hide } = usePaywall();
   const { t } = useI18n();
   const isPro = useIsPro();
@@ -99,7 +102,9 @@ export function Paywall() {
         ? m.monthly
         : p.packageType === "LIFETIME"
           ? m.lifetime
-          : p.product.title.replace(/\s*\(.*\)\s*$/, "") || p.identifier;
+          : p.packageType === "WEEKLY"
+            ? plans.weekly
+            : p.product.title.replace(/\s*\(.*\)\s*$/, "") || p.identifier;
 
   const purchase = async () => {
     const pkg = pkgs?.find((p) => p.identifier === selected);

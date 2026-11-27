@@ -1,4 +1,6 @@
 // HUAWEI IAP server notifications (version v2) → store_purchases.
+// Only SUBSCRIPTION events matter: all Huawei products are subscriptions
+// (weekly / monthly / yearly); other events are ignored.
 // Configure in AppGallery Connect → In-App Purchases → Settings:
 //   Subscription notification URL (v2):
 //   https://<project>.supabase.co/functions/v1/huawei-iap-notify?key=<HUAWEI_NOTIFY_KEY>
@@ -68,10 +70,6 @@ Deno.serve(async (req) => {
     if (s.latestReceiptInfo && (await verifySignature(s.latestReceiptInfo, s.latestReceiptInfoSignature ?? "", s.signatureAlgorithm))) {
       signedReceipt = JSON.parse(s.latestReceiptInfo) as InAppPurchaseData;
     }
-  } else if (body.eventType === "ORDER" && body.orderNotification) {
-    token = body.orderNotification.purchaseToken;
-    productId = body.orderNotification.productId;
-    notificationType = body.orderNotification.notificationType;
   } else {
     return json({ ok: true, ignored: true });
   }
@@ -120,8 +118,6 @@ Deno.serve(async (req) => {
         by = "server";
       } else if (signedReceipt && signedReceipt.purchaseToken === r.purchase_token) {
         data = { ...base, ...signedReceipt };
-      } else if (body.eventType === "ORDER" && notificationType === 2) {
-        data = { ...base, purchaseState: 2 }; // refund
       }
       if (!data) continue;
       await savePurchase(toRow(r.user_id, data, by));

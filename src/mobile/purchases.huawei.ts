@@ -16,7 +16,7 @@ import { Preferences } from "@capacitor/preferences";
 import catalogue from "../../supabase/functions/_shared/huawei-products.json";
 import { verifyHuaweiPurchases } from "./backend";
 import { HUAWEI_IAP_PUBLIC_KEY } from "./config";
-import { HuaweiIap, type HuaweiPurchase } from "./huawei-iap";
+import { HuaweiIap, type HuaweiProductInfo, type HuaweiPurchase } from "./huawei-iap";
 import {
   formatMicros,
   parsePurchaseData,
@@ -38,7 +38,9 @@ const PACKAGE_NAME = "com.nibras.qr";
 const CACHE_KEY = "qr.huawei-pro";
 export const HUAWEI_PRODUCTS = catalogue.products as HuaweiProduct[];
 
-const priceTypeOf = (p: HuaweiProduct) => (p.kind === "subscription" ? PRICE_TYPE.subscription : PRICE_TYPE.nonconsumable);
+const SUB = PRICE_TYPE.subscription;
+/** Months per package, for the "≈ price/month" hint. */
+const MONTHS: Record<string, number> = { ANNUAL: 12 };
 
 let appUserID: string | null = null;
 let onChangeCb: ((p: ProInfo) => void) | null = null;
@@ -87,8 +89,8 @@ type Owned = { raw: HuaweiPurchase & { signatureAlgorithm: string | null }; data
 
 async function ownedAll(): Promise<Owned[]> {
   const out: Owned[] = [];
-  for (const priceType of [PRICE_TYPE.subscription, PRICE_TYPE.nonconsumable]) {
-    const { purchases, signatureAlgorithm } = await HuaweiIap.ownedPurchases({ priceType });
+  {
+    const { purchases, signatureAlgorithm } = await HuaweiIap.ownedPurchases({ priceType: SUB });
     for (const p of purchases) {
       const data = parsePurchaseData(p.purchaseData);
       if (!data) continue;
@@ -177,34 +179,36 @@ async function resetIdentity(): Promise<ProInfo> {
   return refresh({ sync: false });
 }
 
+/** Product details (localised prices) for every configured subscription. */
+async function productInfos(): Promise<HuaweiProductInfo[]> {
+  const ids = HUAWEI_PRODUCTS.map((p) => p.id);
+  return (await HuaweiIap.getProducts({ priceType: SUB, productIds: ids })).products;
+}
+
 async function getPackages(): Promise<PackagesResult> {
   if (!purchasesAvailable()) return { packages: [], error: "store-unavailable", offering: null };
   try {
     const env = await HuaweiIap.isEnvReady({ prompt: true });
     if (!env.ready) return { packages: [], error: `IAP ${env.code ?? ""} ${env.message ?? "not available"}`.trim(), offering: null };
     const packages: StorePackage[] = [];
-    for (const priceType of [PRICE_TYPE.subscription, PRICE_TYPE.nonconsumable]) {
-      const ids = HUAWEI_PRODUCTS.filter((p) => priceTypeOf(p) === priceType).map((p) => p.id);
-      if (!ids.length) continue;
-      const { products } = await HuaweiIap.getProducts({ priceType, productIds: ids });
-      for (const info of products) {
-        const def = HUAWEI_PRODUCTS.find((p) => p.id === info.productId);
-        if (!def || !info.price) continue;
-        const price = info.microsPrice / 1_000_000;
-        packages.push({
-          identifier: def.id,
-          packageType: def.packageType,
-          product: {
-            identifier: info.productId,
-            title: info.productName,
-            price,
-            priceString: info.price,
-            pricePerMonthString:
-              def.packageType === "ANNUAL" && info.microsPrice ? formatMicros(info.microsPrice / 12, info.currency) : null,
-            currencyCode: info.currency,
-          },
-        });
-      }
+    const products = await productInfos();
+    for (const def of HUAWEI_PRODUCTS) {
+      // Products AppGallery does not return (not created / not active) are skipped.
+      const info = products.find((p) => p.productId === def.id);
+      if (!info || !info.price) continue;
+      const months = MONTHS[def.packageType];
+      packages.push({
+        identifier: def.id,
+        packageType: def.packageType,
+        product: {
+          identifier: info.productId,
+          title: info.productName,
+          price: info.microsPrice / 1_000_000,
+          priceString: info.price,
+          pricePerMonthString: months && info.microsPrice ? formatMicros(info.microsPrice / months, info.currency) : null,
+          currencyCode: info.currency,
+        },
+      });
     }
     return {
       packages,
@@ -219,7 +223,7 @@ async function getPackages(): Promise<PackagesResult> {
 async function buy(pkg: StorePackage): Promise<ProInfo | "cancelled"> {
   const def = HUAWEI_PRODUCTS.find((p) => p.id === pkg.identifier);
   if (!def) throw new Error(`Unknown product ${pkg.identifier}`);
-  const res = await HuaweiIap.buy({ productId: def.id, priceType: priceTypeOf(def), developerPayload: appUserID ?? "" });
+  const res = await HuaweiIap.buy({ productId: def.id, priceType: SUB, developerPayload: appUserID ?? "" });
   if (res.status === "cancelled") return "cancelled";
   if (res.status === "owned") return restore();
   if (res.status !== "ok" || !res.purchaseData || !res.signature) {

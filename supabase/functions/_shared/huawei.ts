@@ -12,7 +12,8 @@
 import catalogue from "./huawei-products.json" with { type: "json" };
 import { adminClient } from "./revenuecat.ts";
 
-export type HuaweiProduct = { id: string; kind: "subscription" | "nonconsumable"; packageType: string };
+/** All Huawei products are auto-renewable subscriptions in one group ("Nibras QR Pro"). */
+export type HuaweiProduct = { id: string; kind: "subscription"; packageType: string; period?: string };
 export const HUAWEI_PRODUCTS = catalogue.products as HuaweiProduct[];
 export const PACKAGE_NAME = Deno.env.get("HUAWEI_PACKAGE_NAME") ?? "com.nibras.qr";
 
@@ -138,28 +139,20 @@ async function callSites(kind: "orders" | "subscr", path: string, body: unknown,
 }
 
 /**
- * Confirms a purchase with Huawei's servers and returns the authoritative
- * purchase data. Subscriptions: Subscription service; one-time: Order service.
+ * Confirms a subscription with Huawei's Subscription service and returns the
+ * authoritative purchase data (there are no one-time products on Huawei).
  */
 export async function verifyWithHuawei(d: InAppPurchaseData): Promise<InAppPurchaseData> {
   if (!d.purchaseToken || !d.productId) throw new Error("purchaseToken/productId missing");
-  if (d.kind === 2) {
-    if (!d.subscriptionId) throw new Error("subscriptionId missing");
-    const r = await callSites(
-      "subscr",
-      "/sub/applications/v2/purchases/get",
-      { subscriptionId: d.subscriptionId, purchaseToken: d.purchaseToken },
-      d.accountFlag,
-    );
-    return JSON.parse(String(r.inappPurchaseData ?? "{}")) as InAppPurchaseData;
-  }
+  if (d.kind !== undefined && d.kind !== 2) throw new Error("not a subscription");
+  if (!d.subscriptionId) throw new Error("subscriptionId missing");
   const r = await callSites(
-    "orders",
-    "/applications/purchases/tokens/verify",
-    { purchaseToken: d.purchaseToken, productId: d.productId },
+    "subscr",
+    "/sub/applications/v2/purchases/get",
+    { subscriptionId: d.subscriptionId, purchaseToken: d.purchaseToken },
     d.accountFlag,
   );
-  return JSON.parse(String(r.purchaseTokenData ?? "{}")) as InAppPurchaseData;
+  return JSON.parse(String(r.inappPurchaseData ?? "{}")) as InAppPurchaseData;
 }
 
 // ------------------------------------------------------------------ rows
@@ -167,7 +160,7 @@ export type PurchaseRow = {
   user_id: string;
   store: "huawei";
   product_id: string;
-  kind: "subscription" | "nonconsumable";
+  kind: "subscription";
   purchase_token: string;
   order_id: string | null;
   subscription_id: string | null;
@@ -187,14 +180,13 @@ export function productOf(d: InAppPurchaseData): HuaweiProduct | null {
   return HUAWEI_PRODUCTS.find((p) => p.id === d.productId) ?? null;
 }
 
-/** Same rules as the app (src/mobile/huawei-pro.ts). */
+/** Same rules as the app (src/mobile/huawei-pro.ts). Only subscriptions unlock Pro. */
 export function statusOf(d: InAppPurchaseData, now = Date.now()): { status: string; active: boolean } {
   if (d.purchaseState === 2) return { status: "refunded", active: false };
   if (d.purchaseState !== undefined && d.purchaseState !== 0) return { status: "cancelled", active: false };
-  if (d.kind === 2) {
-    if (d.subIsvalid === false) return { status: "expired", active: false };
-    if (typeof d.expirationDate === "number" && d.expirationDate <= now) return { status: "expired", active: false };
-  }
+  if (d.kind !== undefined && d.kind !== 2) return { status: "invalid", active: false };
+  if (d.subIsvalid === false) return { status: "expired", active: false };
+  if (typeof d.expirationDate === "number" && d.expirationDate <= now) return { status: "expired", active: false };
   return { status: "active", active: true };
 }
 
@@ -206,13 +198,13 @@ export function toRow(userId: string, d: InAppPurchaseData, verifiedBy: "server"
     user_id: userId,
     store: "huawei",
     product_id: d.productId ?? "",
-    kind: product?.kind ?? (d.kind === 2 ? "subscription" : "nonconsumable"),
+    kind: product?.kind ?? "subscription",
     purchase_token: d.purchaseToken ?? "",
     order_id: d.orderId ?? null,
     subscription_id: d.subscriptionId ?? null,
     status,
     is_active: active,
-    expires_at: d.kind === 2 && typeof d.expirationDate === "number" ? new Date(d.expirationDate).toISOString() : null,
+    expires_at: typeof d.expirationDate === "number" ? new Date(d.expirationDate).toISOString() : null,
     auto_renewing: typeof d.autoRenewing === "boolean" ? d.autoRenewing : null,
     sandbox: d.purchaseType === 0,
     account_flag: typeof d.accountFlag === "number" ? d.accountFlag : null,

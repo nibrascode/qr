@@ -49,6 +49,9 @@ async function handle(userId: string, item: Item): Promise<Result> {
   if (d.packageName && d.packageName !== PACKAGE_NAME) return { productId, ok: false, error: "package" };
   if (!productOf(d)) return { productId, ok: false, error: "unknown product" };
   if (!d.purchaseToken) return { productId, ok: false, error: "no token" };
+  // Huawei products are subscriptions only (no one-time / lifetime product).
+  if (d.kind !== undefined && d.kind !== 2) return { productId, ok: false, error: "not a subscription" };
+  if (!d.subscriptionId) return { productId, ok: false, error: "no subscriptionId" };
   if (d.developerPayload && isUuid(d.developerPayload) && d.developerPayload !== userId) {
     return { productId, ok: false, error: "bought by another account" };
   }

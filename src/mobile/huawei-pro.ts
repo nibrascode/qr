@@ -5,8 +5,16 @@
  */
 import type { ProInfo } from "./purchases-types";
 
-export type HuaweiProductKind = "subscription" | "nonconsumable";
-export type HuaweiProduct = { id: string; kind: HuaweiProductKind; packageType: string };
+/** All Huawei products are auto-renewable subscriptions (one group, "Nibras QR Pro"). */
+export type HuaweiProductKind = "subscription";
+export type HuaweiProduct = {
+  id: string;
+  kind: HuaweiProductKind;
+  /** WEEKLY | MONTHLY | ANNUAL */
+  packageType: string;
+  /** ISO 8601 period: P1W, P1M, P1Y (AppGallery allows at most 1 year). */
+  period?: string;
+};
 
 /** HMS IapClient.PriceType values. */
 export const PRICE_TYPE = { consumable: 0, nonconsumable: 1, subscription: 2 } as const;
@@ -54,15 +62,14 @@ export function isActivePurchase(
   if (!d.productId || !products.some((p) => p.id === d.productId)) return false;
   if (d.packageName && d.packageName !== packageName) return false;
   if (d.purchaseState !== undefined && d.purchaseState !== 0) return false;
-  if (d.kind === PRICE_TYPE.subscription) {
-    if (d.subIsvalid === false) return false;
-    if (typeof d.expirationDate === "number" && d.expirationDate <= now) return false;
-    return true;
-  }
-  return d.kind === PRICE_TYPE.nonconsumable || d.kind === undefined;
+  // Only subscriptions unlock Pro (there is no one-time product on Huawei).
+  if (d.kind !== undefined && d.kind !== PRICE_TYPE.subscription) return false;
+  if (d.subIsvalid === false) return false;
+  if (typeof d.expirationDate === "number" && d.expirationDate <= now) return false;
+  return true;
 }
 
-/** Best Pro state from a list of owned purchases (lifetime beats any subscription). */
+/** Best Pro state from a list of owned subscriptions (the one that runs longest). */
 export function proFromHuaweiPurchases(
   list: readonly InAppPurchaseData[],
   products: readonly HuaweiProduct[],
@@ -71,8 +78,6 @@ export function proFromHuaweiPurchases(
 ): ProInfo {
   const active = list.filter((d) => isActivePurchase(d, products, packageName, now));
   if (!active.length) return { pro: false, expiresAt: null, willRenew: false, productId: null };
-  const lifetime = active.find((d) => d.kind !== PRICE_TYPE.subscription);
-  if (lifetime) return { pro: true, expiresAt: null, willRenew: false, productId: lifetime.productId ?? null };
   const best = [...active].sort((a, b) => (b.expirationDate ?? 0) - (a.expirationDate ?? 0))[0];
   return {
     pro: true,
